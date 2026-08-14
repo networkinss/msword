@@ -28,6 +28,25 @@
       "name": "x64-release",
       "displayName": "Word x64 Release",
       "inherits": "x64"
+    },
+    {
+      "name": "x64-clang",
+      "hidden": true,
+      "inherits": "x64",
+      "toolset": {
+        "value": "ClangCL",
+        "strategy": "set"
+      }
+    },
+    {
+      "name": "x64-clang-debug",
+      "displayName": "Word x64 Debug (clang-cl)",
+      "inherits": "x64-clang"
+    },
+    {
+      "name": "x64-clang-release",
+      "displayName": "Word x64 Release (clang-cl)",
+      "inherits": "x64-clang"
     }
   ],
   "buildPresets": [
@@ -39,6 +58,16 @@
     {
       "name": "x64-release",
       "configurePreset": "x64-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "x64-clang-debug",
+      "configurePreset": "x64-clang-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "x64-clang-release",
+      "configurePreset": "x64-clang-release",
       "configuration": "Release"
     }
   ]
