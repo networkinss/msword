@@ -11,8 +11,11 @@ repository, and what the resulting binary depends on at runtime.
   cross-compilation, as configured today.
 - **Compiler / IDE**: Visual Studio 2022 with the **Desktop development
   with C++** workload. The CMake presets hard-code the
-  `"Visual Studio 17 2022"` generator targeting x64 — MSVC (`cl.exe`) is the
-  only supported compiler; there is no Clang/MinGW/Ninja path configured.
+  `"Visual Studio 17 2022"` generator targeting x64. MSVC (`cl.exe`) is the
+  primary supported compiler; the `x64-clang-debug` / `x64-clang-release`
+  presets select the `ClangCL` toolset (VS component "C++ Clang tools for
+  Windows") for the same generator. There is no MinGW or Ninja path
+  configured.
 - **Windows SDK**: A Windows 10 or Windows 11 SDK component, installed
   through the Visual Studio installer. Configuration fails explicitly if
   `Windows Kits/10/Include/<version>/um/Windows.h` cannot be found.
@@ -38,26 +41,30 @@ that are not present in the source archive.
 
 ## Runtime dependencies of the compiled binary
 
-The assumption that the compiled `WORD1.exe` runs on Windows 10/11 with
-**no further dependencies** is *mostly* but not entirely correct:
+The compiled `WORD1.exe` runs on a clean Windows 10/11 install with **no
+further dependencies**:
 
 - All directly linked libraries (`user32.dll`, `gdi32.dll`, `ole32.dll`,
   `comdlg32.dll`, `imm32.dll`, `dbghelp.dll`) are core OS components
   present on every Windows 10/11 install — no redistributable installers
   or bundled DLLs are required for these.
-- However, `CMakeLists.txt` does not set a static MSVC runtime
-  (`CMAKE_MSVC_RUNTIME_LIBRARY` / `/MT`), so CMake's default applies: the
-  binary links the **dynamic** MSVC C/C++ runtime (`/MD`). That means
-  `WORD1.exe` depends on the Visual C++ Redistributable
-  (`vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll`, etc.) matching
-  the VS 2022 toolset being present on the target machine. Most Windows
-  10/11 systems already have a compatible VC++ Redistributable installed
-  (many other applications ship it), but it is not guaranteed to be present
-  on a clean system — if it's missing, the exe will fail to start with a
-  missing-DLL error until the [Microsoft Visual C++ Redistributable for
-  Visual Studio 2022 (x64)](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist)
-  is installed.
-- To get a genuinely dependency-free binary (only relying on core OS
-  DLLs), the runtime would need to be statically linked
-  (`CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded$<$<CONFIG:Debug>:Debug>`, i.e.
-  `/MT` / `/MTd`) — this is not currently configured.
+- The MSVC C/C++ runtime is linked **statically**: `src/CMakeLists.txt`
+  sets `CMAKE_MSVC_RUNTIME_LIBRARY` to
+  `MultiThreaded$<$<CONFIG:Debug>:Debug>` (`/MT` in Release, `/MTd` in
+  Debug). `WORD1.exe` therefore does **not** need the Visual C++
+  Redistributable (`vcruntime140.dll`, `msvcp140.dll`, …) on the target
+  machine.
+- The behaviour is controlled by the `MSWORD_STATIC_CRT` CMake option,
+  `ON` by default and set explicitly by every preset. Configuring with
+  `-DMSWORD_STATIC_CRT=OFF` switches all targets back to the dynamic CRT
+  (`/MD`, `/MDd`), which then requires the [Microsoft Visual C++
+  Redistributable for Visual Studio 2022
+  (x64)](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist)
+  at runtime.
+- The CRT choice must be identical across every object that gets linked
+  together, so change it only through that option and rebuild from a clean
+  cache — never per target. This is safe here because the project builds
+  only static libraries and executables; if a DLL target is ever added,
+  revisit the static-CRT decision (each module would then carry its own
+  CRT state, so CRT objects such as `FILE*` or heap allocations must not
+  cross the module boundary).

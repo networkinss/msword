@@ -10,6 +10,43 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "This project must be configured for x64 (use: cmake --preset x64-debug).")
 endif()
 
+# GNU-driver (mingw-w64 GCC / clang) equivalents of the MSVC options used
+# throughout this file. MSVC remains the primary supported compiler; these
+# exist so a non-MSVC toolchain does not silently build with different
+# language semantics.
+#
+# -funsigned-char is the counterpart of /J and is NOT optional: GCC defaults to
+# a signed plain char on x86, whereas the original toolchain (and MSVC with /J)
+# uses unsigned. The byte-oriented string and international-character routines
+# in the original sources depend on the unsigned default, and the difference
+# does not produce a diagnostic -- it silently changes comparisons of high-bit
+# characters.
+set(OPUS_GNU_ORIGINAL_C_OPTIONS -funsigned-char)
+set(OPUS_GNU_UTF8_OPTIONS -finput-charset=UTF-8 -fexec-charset=UTF-8)
+if(NOT MSVC)
+    # Win32 API surface level. MSVC picks this up from the Windows SDK
+    # defaults; mingw-w64 defaults far lower and then hides SRWLock,
+    # GetTickCount64 and the OPC (msopc.h) COM interfaces behind it.
+    add_compile_definitions(_WIN32_WINNT=0x0A00 WINVER=0x0A00 NTDDI_VERSION=0x0A000000)
+endif()
+
+# Link the MSVC C/C++ runtime statically by default so WORD1.exe depends only
+# on core OS DLLs and needs no Visual C++ Redistributable on the target machine.
+# Every target in this project is a static library or an executable (no DLLs),
+# so a single CRT choice applies consistently across the whole link graph.
+option(MSWORD_STATIC_CRT "Link the MSVC C/C++ runtime statically (/MT, /MTd)" ON)
+if(MSWORD_STATIC_CRT)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+else()
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL$<$<CONFIG:Debug>:Debug>")
+endif()
+if(MSWORD_STATIC_CRT AND NOT MSVC)
+    # CMAKE_MSVC_RUNTIME_LIBRARY is ignored by GNU-driver toolchains. Link the
+    # GCC runtimes statically instead so the executable stays self-contained in
+    # the same way the /MT build is.
+    add_link_options(-static -static-libgcc -static-libstdc++)
+endif()
+
 set(MSWORD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 cmake_path(NORMAL_PATH MSWORD_ROOT)
 set(MSWORD_BUILD_ROOT "${MSWORD_ROOT}/build")
@@ -56,10 +93,24 @@ set_target_properties(legacy_sources PROPERTIES FOLDER "Legacy reference (not co
 
 # Start of the real product engine. Every source in this target is from the
 # original Opus tree; compatibility code supplies platform services only.
-set(OPUS_SDK_ROOT "$ENV{ProgramFiles\(x86\)}/Windows Kits/10")
-set(OPUS_WINDOWS_SDK_HEADER
-    "${OPUS_SDK_ROOT}/Include/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/um/Windows.h")
-if(NOT EXISTS "${OPUS_WINDOWS_SDK_HEADER}")
+if(MSVC)
+    # CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION is only set by the Visual Studio
+    # generators, so this branch must stay MSVC-only.
+    set(OPUS_SDK_ROOT "$ENV{ProgramFiles\(x86\)}/Windows Kits/10")
+    set(OPUS_WINDOWS_SDK_HEADER
+        "${OPUS_SDK_ROOT}/Include/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/um/Windows.h")
+else()
+    # mingw-w64 ships its own Win32 headers. Resolve the real windows.h out of
+    # the compiler's implicit include path: port/original/windows.h deliberately
+    # shadows the SDK header by name, so opus_windows_sdk.h has to name the file
+    # by absolute path or it would include the shim recursively.
+    find_file(OPUS_WINDOWS_SDK_HEADER
+        NAMES windows.h Windows.h
+        HINTS ${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES}
+        NO_DEFAULT_PATH
+    )
+endif()
+if(NOT OPUS_WINDOWS_SDK_HEADER OR NOT EXISTS "${OPUS_WINDOWS_SDK_HEADER}")
     message(FATAL_ERROR "Could not locate the Windows SDK header: ${OPUS_WINDOWS_SDK_HEADER}")
 endif()
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated/original")
@@ -104,6 +155,8 @@ target_include_directories(opus_mkcmd_tool PRIVATE
 )
 if(MSVC)
     target_compile_options(opus_mkcmd_tool PRIVATE /J /W3 /wd4996)
+else()
+    target_compile_options(opus_mkcmd_tool PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS})
 endif()
 set_target_properties(opus_mkcmd_tool PROPERTIES
     FOLDER "Original Opus x64/build tools"
@@ -133,6 +186,8 @@ target_include_directories(opus_cabi_tool PRIVATE
 if(MSVC)
     target_compile_options(opus_cabi_tool PRIVATE
         /J /W3 /wd4005 /permissive-)
+else()
+    target_compile_options(opus_cabi_tool PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS})
 endif()
 set_target_properties(opus_cabi_tool PROPERTIES
     FOLDER "Original Opus x64/build tools"
@@ -158,6 +213,8 @@ target_include_directories(opus_bitapp_tool PRIVATE
 )
 if(MSVC)
     target_compile_options(opus_bitapp_tool PRIVATE /J /W3 /wd4996)
+else()
+    target_compile_options(opus_bitapp_tool PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS})
 endif()
 set_target_properties(opus_bitapp_tool PROPERTIES
     FOLDER "Original Opus x64/build tools"
@@ -376,6 +433,8 @@ add_executable(opus_mkdlg_tool EXCLUDE_FROM_ALL
 )
 if(MSVC)
     target_compile_options(opus_mkdlg_tool PRIVATE /J /W3 /wd4996)
+else()
+    target_compile_options(opus_mkdlg_tool PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS})
 endif()
 set_target_properties(opus_mkdlg_tool PROPERTIES
     FOLDER "Original Opus x64/build tools"
@@ -416,6 +475,8 @@ target_include_directories(opus_mergeelx_tool PRIVATE
 )
 if(MSVC)
     target_compile_options(opus_mergeelx_tool PRIVATE /J /W3 /wd4996)
+else()
+    target_compile_options(opus_mergeelx_tool PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS})
 endif()
 set_target_properties(opus_mergeelx_tool PROPERTIES
     FOLDER "Original Opus x64/build tools"
@@ -690,6 +751,8 @@ if(MSVC)
     # /J preserves the original compiler's unsigned-char default. Do not use
     # the C++ compiler for K&R-era original C translation units.
     target_compile_options(opus_original_engine PRIVATE /J /W3 /wd4005 /Gy /guard:cf)
+else()
+    target_compile_options(opus_original_engine PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS})
 endif()
 set_target_properties(opus_original_engine PROPERTIES
     FOLDER "Original Opus x64"
@@ -739,6 +802,8 @@ if(MSVC)
     # Opus was built with unsigned plain characters; the byte-oriented string
     # and international-character assembly routines depend on that behavior.
     target_compile_options(opus_x64_runtime PRIVATE /J /W4 /permissive- /guard:cf /sdl)
+else()
+    target_compile_options(opus_x64_runtime PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS})
 endif()
 set_target_properties(opus_x64_runtime PROPERTIES
     FOLDER "Original Opus x64/runtime"
@@ -763,6 +828,8 @@ target_include_directories(opus_original_sttb_test PRIVATE ${OPUS_ORIGINAL_INCLU
 target_link_libraries(opus_original_sttb_test PRIVATE opus_x64_runtime user32)
 if(MSVC)
     target_compile_options(opus_original_sttb_test PRIVATE /J /W3 /wd4005)
+else()
+    target_compile_options(opus_original_sttb_test PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS})
 endif()
 set_target_properties(opus_original_sttb_test PROPERTIES
     FOLDER "Original Opus x64/tests"
@@ -788,6 +855,8 @@ target_include_directories(opus_original_plc_test PRIVATE ${OPUS_ORIGINAL_INCLUD
 target_link_libraries(opus_original_plc_test PRIVATE opus_x64_runtime user32)
 if(MSVC)
     target_compile_options(opus_original_plc_test PRIVATE /J /W3 /wd4005)
+else()
+    target_compile_options(opus_original_plc_test PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS})
 endif()
 set_target_properties(opus_original_plc_test PROPERTIES
     FOLDER "Original Opus x64/tests"
@@ -812,6 +881,8 @@ target_include_directories(opus_sdm_cab_test PRIVATE ${OPUS_ORIGINAL_INCLUDE_DIR
 target_link_libraries(opus_sdm_cab_test PRIVATE opus_x64_runtime user32)
 if(MSVC)
     target_compile_options(opus_sdm_cab_test PRIVATE /J /W4 /permissive-)
+else()
+    target_compile_options(opus_sdm_cab_test PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS})
 endif()
 set_target_properties(opus_sdm_cab_test PROPERTIES
     FOLDER "Original Opus x64/tests"
@@ -869,6 +940,10 @@ target_link_libraries(WORD1 PRIVATE opus_original_engine opus_x64_runtime user32
 if(MSVC)
     target_compile_options(WORD1 PRIVATE /J /W3 /wd4005 /utf-8 /guard:cf /sdl)
     target_link_options(WORD1 PRIVATE /DYNAMICBASE /HIGHENTROPYVA /NXCOMPAT /guard:cf /CETCOMPAT /MANIFEST:NO)
+else()
+    target_compile_options(WORD1 PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS} ${OPUS_GNU_UTF8_OPTIONS})
+    target_link_options(WORD1 PRIVATE
+        -Wl,--dynamicbase -Wl,--high-entropy-va -Wl,--nxcompat)
 endif()
 set_target_properties(WORD1 PROPERTIES
     FOLDER "Original Opus x64/product"
@@ -911,6 +986,8 @@ target_include_directories(opus_original_strtbl_test PRIVATE ${OPUS_ORIGINAL_INC
 target_link_libraries(opus_original_strtbl_test PRIVATE user32)
 if(MSVC)
     target_compile_options(opus_original_strtbl_test PRIVATE /J /W3 /wd4005)
+else()
+    target_compile_options(opus_original_strtbl_test PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS})
 endif()
 set_target_properties(opus_original_strtbl_test PROPERTIES
     FOLDER "Original Opus x64/tests"
@@ -954,6 +1031,8 @@ target_compile_definitions(opus_modern_formats_test PRIVATE NOMINMAX UNICODE _UN
 target_link_libraries(opus_modern_formats_test PRIVATE opus_x64_runtime user32 gdi32)
 if(MSVC)
     target_compile_options(opus_modern_formats_test PRIVATE /W4 /utf-8)
+else()
+    target_compile_options(opus_modern_formats_test PRIVATE ${OPUS_GNU_UTF8_OPTIONS})
 endif()
 set_target_properties(opus_modern_formats_test PROPERTIES
     FOLDER "Original Opus x64/tests"
@@ -976,6 +1055,8 @@ target_compile_definitions(opus_word1_ui_test PRIVATE NOMINMAX UNICODE _UNICODE)
 target_link_libraries(opus_word1_ui_test PRIVATE user32 gdi32)
 if(MSVC)
     target_compile_options(opus_word1_ui_test PRIVATE /W4 /utf-8)
+else()
+    target_compile_options(opus_word1_ui_test PRIVATE ${OPUS_GNU_UTF8_OPTIONS})
 endif()
 set_target_properties(opus_word1_ui_test PROPERTIES
     FOLDER "Original Opus x64/tests"

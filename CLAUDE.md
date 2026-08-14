@@ -31,7 +31,10 @@ diff -u /home/amrit/IdeaProjects/MSWORD/Opus/<file> src/Opus/<file>
 
 This is the fastest way to tell whether a change in `src/Opus/` is a
 deliberate port adaptation or an accidental behavior change — as of this
-writing 282 files under `Opus/` differ from the pristine original.
+writing 203 files under `Opus/` differ from the pristine original (208
+across all of `src/`). The pristine tree also still contains the original
+prebuilt binaries (`Opus/tools/*.exe`, `Opus/lib/*.lib`, `Opus/program/*.dll`)
+that this port drops.
 
 ## Build and run
 
@@ -46,19 +49,19 @@ cmake --build --preset x64-debug
 
 Use `x64-release` for an optimized build. Build a single target with
 `cmake --build --preset x64-debug --target <name>` (e.g. `WORD1`,
-`opus_original_engine`, `opus_x64_runtime`).
+`opus_original_engine`, `opus_x64_runtime`). The `x64-clang-debug` /
+`x64-clang-release` presets configure the same generator with the `ClangCL`
+toolset; MSVC (`cl.exe`) remains the primary supported compiler.
 
-**Runtime dependency note**: `CMakeLists.txt` does not set
-`CMAKE_MSVC_RUNTIME_LIBRARY`, so all targets link the dynamic MSVC CRT
-(`/MD`) by default — `WORD1.exe` therefore depends on the Visual C++
-Redistributable (VS 2022, x64) being present on the target machine, on top
-of the core Windows DLLs it links directly (`user32`, `gdi32`, `ole32`,
-`comdlg32`, `imm32`, `dbghelp`). To make the binary dependency-free on a
-clean Windows 10/11 install, add
-`set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")`
-near the top of `src/CMakeLists.txt` and rebuild everything (the CRT choice
-must be consistent across all linked objects); see `REQUIREMENTS.md` for
-details.
+**Runtime dependency note**: `src/CMakeLists.txt` sets
+`CMAKE_MSVC_RUNTIME_LIBRARY` to `MultiThreaded$<$<CONFIG:Debug>:Debug>`
+(the `MSWORD_STATIC_CRT` option, `ON` by default), so every target links the
+**static** MSVC CRT (`/MT`, `/MTd`). `WORD1.exe` therefore needs no Visual
+C++ Redistributable — only the core Windows DLLs it links directly
+(`user32`, `gdi32`, `ole32`, `comdlg32`, `imm32`, `dbghelp`). The CRT choice
+must stay consistent across all linked objects, so change it only via that
+option (`-DMSWORD_STATIC_CRT=OFF` selects `/MD`, `/MDd`) and rebuild
+everything; see `REQUIREMENTS.md` for details.
 
 Generated output locations (all git-ignored, created by CMake):
 - `out/` — CMake cache and generated Visual Studio solution
@@ -132,9 +135,10 @@ steps to need updating too.
 
 ### Legacy assembly is inventoried, not compiled
 
-`CMakeLists.txt` globs all `*.asm` under `src/Opus/asm/` into an
-IDE-visible `legacy_sources` target and asserts the count is exactly **59**
-files. This is a deliberate tripwire: it fails configuration if the
+`CMakeLists.txt` globs all `*.asm` under `src/` into an IDE-visible
+`legacy_sources` target and asserts the count is exactly **59** files (52
+under `Opus/asm/`, 7 under `OpusEtAl/tools/src/`). This is a deliberate
+tripwire: it fails configuration if the
 original assembly tree changes, forcing a conscious decision about whether
 a new/removed `.asm` file needs a corresponding x64 translation. The actual
 runtime behavior of that assembly lives as C/C++ translations in

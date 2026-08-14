@@ -16,7 +16,8 @@
       },
       "binaryDir": "${sourceDir}/../out",
       "cacheVariables": {
-        "CMAKE_INTERMEDIATE_DIR_STRATEGY": "SHORT"
+        "CMAKE_INTERMEDIATE_DIR_STRATEGY": "SHORT",
+        "MSWORD_STATIC_CRT": "ON"
       }
     },
     {
@@ -47,6 +48,29 @@
       "name": "x64-clang-release",
       "displayName": "Word x64 Release (clang-cl)",
       "inherits": "x64-clang"
+    },
+    {
+      "name": "x64-mingw",
+      "hidden": true,
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/../out-mingw",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_RC_COMPILER": "windres",
+        "CMAKE_INTERMEDIATE_DIR_STRATEGY": "SHORT",
+        "MSWORD_STATIC_CRT": "ON"
+      }
+    },
+    {
+      "name": "x64-mingw-debug",
+      "displayName": "Word x64 Debug (mingw-w64)",
+      "inherits": "x64-mingw"
+    },
+    {
+      "name": "x64-mingw-release",
+      "displayName": "Word x64 Release (mingw-w64)",
+      "inherits": "x64-mingw"
     }
   ],
   "buildPresets": [
@@ -68,6 +92,16 @@
     {
       "name": "x64-clang-release",
       "configurePreset": "x64-clang-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "x64-mingw-debug",
+      "configurePreset": "x64-mingw-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "x64-mingw-release",
+      "configurePreset": "x64-mingw-release",
       "configuration": "Release"
     }
   ]

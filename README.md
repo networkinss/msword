@@ -9,6 +9,11 @@ The result is the original Word application and user experience running as a
 64-bit Windows executable. This is not an emulator or a reimplementation using
 a modern editor control.
 
+> **Fork notice**: this repository is a fork of
+> [jmarshall23/msword](https://github.com/jmarshall23/msword). The upstream
+> project is the origin of the port; changes here are maintained separately
+> and are not necessarily reflected upstream.
+
 ## Requirements
 
 - 64-bit Windows
@@ -17,13 +22,22 @@ a modern editor control.
 - CMake 3.25 or newer
 - PowerShell
 
+An experimental mingw-w64 configuration exists as well; it needs only the
+mingw-w64 toolchain, Ninja and CMake (no Visual Studio, no Windows SDK), but
+does not yet build to completion - see `TODO.md`.
+
+The MSVC runtime is linked statically (`/MT`, `/MTd`), so the resulting
+`WORD1.exe` runs on a clean Windows 10/11 install without the Visual C++
+Redistributable. See `REQUIREMENTS.md` for details and the
+`MSWORD_STATIC_CRT` option.
+
 ## Build and run
 
 Clone the repository, configure the included CMake preset, and build it from a
 PowerShell prompt:
 
 ```powershell
-git clone https://github.com/jmarshall23/msword.git
+git clone https://github.com/networkinss/msword.git
 Set-Location msword\src
 
 cmake --preset x64-debug
@@ -44,6 +58,18 @@ The presets use the Visual Studio 2022 x64 generator. After configuration, the
 generated solution can also be opened directly from
 `out\MicrosoftWordX64Port.sln`; use `WORD1` as the startup project.
 
+### mingw-w64 (experimental, not yet working)
+
+`x64-mingw-debug` / `x64-mingw-release` configure the same source tree with
+mingw-w64 GCC and Ninja, building into `out-mingw\` so a Visual Studio build in
+`out\` is left untouched. **This path does not produce a working `WORD1.exe`
+yet** - the CMake plumbing is in place, but several source-level and
+build-ordering issues remain open. See `TODO.md` for the exact list and the
+current state of the investigation.
+
+MSVC remains the primary supported compiler; nothing about the mingw work
+changes how the Visual Studio presets behave.
+
 ## Test
 
 Run the complete Debug test suite from the repository root:
@@ -62,6 +88,13 @@ For a release build, replace `Debug` with `Release`. The suite covers the
 ported x64 runtime, original Word data structures and command tables, process
 startup, and automated UI workflows including typing, selection, formatting,
 dialogs, and saving.
+
+## Continuous integration
+
+`.github/workflows/build.yml` configures, builds and tests both presets on a
+GitHub-hosted `windows-2022` runner and uploads `WORD1.exe` as a build
+artifact. The interactive `opus_word1_*` UI tests run there in a
+report-only step, since they need a desktop session.
 
 ## Project layout
 

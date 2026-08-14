@@ -1,0 +1,72 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # windows-2022 pins the VS 2022 toolset the presets require; the image
+    # already ships CMake, the Windows 10/11 SDK and PowerShell, and this
+    # project has no package-manager dependencies, so nothing extra is
+    # installed here.
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [x64-debug, x64-release]
+
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: src
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Verify no dynamic CRT dependency
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe" |
+            Sort-Object FullName | Select-Object -Last 1
+          $deps = & $dumpbin.FullName /dependents ..\bin\WORD1.exe
+          $deps
+          if ($deps -match 'vcruntime|msvcp\d+\.dll|ucrtbase|api-ms-win-crt') {
+            throw "WORD1.exe (${{ matrix.preset }}) still imports the dynamic MSVC runtime."
+          }
+
+      # Non-interactive tests: unit tests, the runtime/format tests and the
+      # process-startup smoke test.
+      - name: Test (headless)
+        run: |
+          $config = if ('${{ matrix.preset }}' -eq 'x64-debug') { 'Debug' } else { 'Release' }
+          ctest --test-dir ..\out -C $config --output-on-failure -E '^opus_word1_'
+
+      # The opus_word1_* tests drive a real window through the message queue and
+      # need a desktop session. Hosted runners usually provide one, but this is
+      # the fragile part of the pipeline, so it is reported without failing the
+      # build until it has proven stable.
+      - name: Test (UI, informational)
+        continue-on-error: true
+        run: |
+          $config = if ('${{ matrix.preset }}' -eq 'x64-debug') { 'Debug' } else { 'Release' }
+          ctest --test-dir ..\out -C $config --output-on-failure -R '^opus_word1_'
+
+      - name: Upload WORD1.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: WORD1-${{ matrix.preset }}
+          path: |
+            bin/WORD1.exe
+            build/pdb/**/WORD1.pdb
+          if-no-files-found: error
