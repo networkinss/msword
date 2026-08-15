@@ -144,7 +144,13 @@ $header = @"
  */
 #ifdef elkAppMac
 
-csconst ELDI rgeldi [] = { { 0, 0, 0 } };
+/* ELDI ends in a flexible array member (ELFD rgelfd[]). MSVC rejects an
+   *array* of such structs (C2233) though clang accepts it, so declare a
+   single entry and expose it as a pointer: rgeldi[i] and &rgeldi[i] both
+   still compile, and index 0 -- the only one elxprocs.c reaches, since
+   ieldiMax is (ieldiIDDUsrDlg + 1) -- resolves identically. */
+csconst ELDI opusEldiEntry = { 0, 0, 0 };
+#define rgeldi (&opusEldiEntry)
 csconst unsigned rgichName [] = { 0 };
 csconst unsigned char rgchElkNames [] = { 0 };
 csconst unsigned mpelkistName [elkAppMac] = { 0 };

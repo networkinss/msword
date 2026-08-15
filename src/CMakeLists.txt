@@ -44,7 +44,8 @@ if(MSVC)
         $<$<COMPILE_LANGUAGE:C>:/wd4244>
         $<$<COMPILE_LANGUAGE:C>:/wd4267>
         $<$<COMPILE_LANGUAGE:C>:/wd4477>
-        $<$<COMPILE_LANGUAGE:C>:/wd4996>)
+        $<$<COMPILE_LANGUAGE:C>:/wd4996>
+        $<$<COMPILE_LANGUAGE:C>:/wd4200>)
 endif()
 
 if(NOT MSVC)
