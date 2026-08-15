@@ -1,3 +1,28 @@
+# TODO — ARM64 (Windows on ARM) build
+
+Status 2026-08-15: planned, not started. Decision: use **llvm-mingw**
+(mstorsjo, release 20260616, `ucrt-x86_64` zip) as cross-toolchain on m93p —
+classic mingw-w64 GCC cannot target ARM64 PE. Download to
+`C:\tools\llvm-mingw.zip` was started but m93p shut down before verification;
+re-download if absent (~178 MB).
+
+Plan:
+1. Extract to `C:\tools\llvm-mingw`; compilers `aarch64-w64-mingw32-clang(++)`,
+   `aarch64-w64-mingw32-windres`.
+2. New preset `arm64-clang-mingw-debug`: Ninja Multi-Config,
+   `CMAKE_SYSTEM_NAME=Windows`, `CMAKE_SYSTEM_PROCESSOR=ARM64`, binary dir
+   `out-arm64/`.
+3. **Codegen blocker**: cross-built codegen tools are ARM64 exes the x64 host
+   cannot run. Add `OPUS_PREGENERATED_DIR` CMake option — the generated files
+   are architecture-independent text, so import them from the existing x64
+   build's `out-clang-mingw/generated/original/` and skip tool builds when
+   cross-compiling.
+4. Expect few source changes: no assembly is compiled, pointer-width work is
+   done, LLP64 holds on ARM64 Windows.
+5. Testing: no ARM Windows hardware available. Options: genuine Windows 11
+   ARM64 on the user's Pi 5 via the Windows-on-Raspberry (WoR) imager
+   (user will consider), or Wine/aarch64 on Pi OS as a caveated smoke test.
+
 # TODO - mingw-w64 build path
 
 Status as of **2026-08-14**. This file tracks the work to build the port with

@@ -271,7 +271,20 @@ extern int		fCheckPtr;
 /* These macros initialize st or sz.  When executed, they copy string to
 	frame and return a near pointer to it.
 */
+#ifdef OPUS_X64
+/* The original MSC `string` compiler feature knew each literal's true length,
+ * including embedded NULs. Message templates rely on that: their placeholder
+ * escapes carry a width byte that is often \000 (e.g. message.h's
+ * "Save changes to \006\000?"), so a strlen-based reimplementation truncates
+ * the template at the width byte and the prompt decoder never reaches the
+ * substitution. Capture sizeof at the macro site -- every caller passes a
+ * literal -- and hand the exact length to the native implementation. */
+char *OpusStringMapCch();
+#define StringMap(s, counted, location) \
+	OpusStringMapCch((s), (int)(sizeof(s) - 1), (counted), (location))
+#else
 string char *StringMap();
+#endif
 #define StFrame(s)	StringMap(s, 1, 1)  /* init st, copy to frame */
 #define SzFrame(s)	StringMap(s, 0, 1)  /* init sz, copy to frame */
 #define StShared(s)	StringMap(s, 1, 2)  /* init st, copy to shared frame */

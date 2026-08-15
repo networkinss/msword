@@ -809,6 +809,11 @@ FC fc;
 DisposeDoc(doc)
 int doc;
 { /* Wipe this doc, destroying any changes since last save */
+#ifdef OPUS_X64
+	/* Doc ids are reused; drop any modern-save display-name mapping. */
+	extern void OpusWin95AliasForgetDoc();
+	OpusWin95AliasForgetDoc(doc);
+#endif
 
 	int isels;
 	struct DOD *pdod, dod;

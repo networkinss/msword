@@ -90,6 +90,7 @@ DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 extern int OpusWin95SaveAliasMatches();
 extern int OpusFinishWin95SaveAlias();
 extern int OpusWin95SaveAliasRequiresRtf();
+extern int OpusWin95SaveAliasAdoptModern();
 #define FWin95SaveAliasMatches(st) OpusWin95SaveAliasMatches(st)
 #else
 #define FWin95SaveAliasMatches(st) fFalse
@@ -710,6 +711,13 @@ LCleanup:
 	if (!OpusFinishWin95SaveAlias(stFile,
 			cmd == cmdOK && pcmb->fAction, doc) && cmd == cmdOK)
 		cmd = cmdError;
+	/* Modern-format adoption (project decision): a successful .docx/.odt
+		save is a full-fidelity home, not a foreign-format export, so adopt
+		the chosen name for display and clear the dirty state. Native and
+		true-foreign (RTF/Text) saves keep the original semantics. */
+	if (cmd == cmdOK && pcmb->fAction &&
+			OpusWin95SaveAliasAdoptModern(stFile, doc))
+		UndirtyDoc(doc);
 	#endif
 	if (cmd == cmdCancelled)
 		fGuaranteeSave = fFalse;

@@ -142,6 +142,7 @@ void WriteCurrentStack(HANDLE file, unsigned frames_to_skip) {
     SymCleanup(process);
 }
 
+#if defined(_MSC_VER)
 int __cdecl WriteRtcFailure(int error_type, const wchar_t* file_name,
                             int line, const wchar_t* module_name,
                             const wchar_t* format, ...) {
@@ -172,6 +173,7 @@ int __cdecl WriteRtcFailure(int error_type, const wchar_t* file_name,
     CloseHandle(file);
     return 0;
 }
+#endif  /* _MSC_VER */
 
 LONG WINAPI WriteCrashStack(EXCEPTION_POINTERS* exception) {
     char crash_path[MAX_PATH] = {};
@@ -393,7 +395,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous,
 
     SetUnhandledExceptionFilter(WriteCrashStack);
     AddVectoredExceptionHandler(1, ObserveVectoredException);
+#if defined(_MSC_VER)
+    /* /RTC runtime-check reporting is an MSVC-only facility; other compilers
+       have no _RTC_* runtime and no checks to report. */
     _RTC_SetErrorFuncW(WriteRtcFailure);
+#endif
     ResetRibbonTrace();
 
     /* The native SDM shim owns the controls, while Microsoft's original

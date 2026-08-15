@@ -1,9 +1,9 @@
+#include "opus_lvalue_cast.h"
 /* S E L E C T . C */
 
 #ifdef MAC
 #define EVENTS
 #include "toolbox.h"
-#include "opus_lvalue_cast.h"
 #endif
 
 #define RSHDEFS

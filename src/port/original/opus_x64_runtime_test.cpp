@@ -9,12 +9,16 @@
 #include <cstdint>
 #include <cstring>
 
-extern "C" struct ITR vitr = {};
+/* These were stub definitions from when this test linked only the runtime
+   library. It now links opus_original_engine (for OpusSaveDocumentAsDocx and
+   its callees), which provides the real vitr / mp*h* tables -- so reference
+   them instead of defining duplicates. */
+extern "C" struct ITR vitr;
 
-extern "C" void** mpdochdod[8] = {};
-extern "C" void** mpfnhfcb[8] = {};
-extern "C" void** mpwwhwwd[8] = {};
-extern "C" void** mpmwhmwd[8] = {};
+extern "C" void** mpdochdod[];
+extern "C" void** mpfnhfcb[];
+extern "C" void** mpwwhwwd[];
+extern "C" void** mpmwhmwd[];
 
 extern "C" void* N_PdodDoc(int doc);
 extern "C" void* N_PfcbFn(int fn);

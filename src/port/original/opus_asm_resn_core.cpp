@@ -226,8 +226,11 @@ extern "C" int FIsectIval(const OpusCa* range, const long first,
     return range->cpLim >= first && range->cpFirst <= limit;
 }
 
-extern "C" char* StringMap(const char* text, const int counted,
-                            const int location) {
+/* Length-aware core: `cch` is the literal's exact byte count (sizeof - 1,
+   captured by the StringMap macro in word.h), so templates with embedded NUL
+   bytes -- every message placeholder's width byte -- survive intact. */
+extern "C" char* OpusStringMapCch(const char* text, const int cch,
+                                  const int counted, const int location) {
     (void)location;
     if (!counted) {
         return const_cast<char*>(text);
@@ -235,7 +238,7 @@ extern "C" char* StringMap(const char* text, const int counted,
     thread_local unsigned char buffers[16][256];
     thread_local unsigned int next_buffer = 0;
     unsigned char* const result = buffers[next_buffer++ % 16];
-    std::size_t count = std::strlen(text);
+    std::size_t count = cch < 0 ? 0 : static_cast<std::size_t>(cch);
     if (count > 254) {
         count = 254;
     }
@@ -243,6 +246,14 @@ extern "C" char* StringMap(const char* text, const int counted,
     std::memcpy(result + 1, text, count);
     result[count + 1] = 0;
     return reinterpret_cast<char*>(result);
+}
+
+/* Kept for completeness; loses anything past an embedded NUL. All in-tree
+   callers go through the word.h macro and the length-aware core above. */
+extern "C" char* StringMap(const char* text, const int counted,
+                            const int location) {
+    return OpusStringMapCch(text, static_cast<int>(std::strlen(text)),
+                            counted, location);
 }
 
 extern "C" long CpMac2Doc(const int doc) {

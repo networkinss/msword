@@ -1,6 +1,7 @@
 #include "opus_x64_compat.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 typedef int (*OPUS_PFN)();
@@ -169,12 +170,47 @@ typedef char OpusAssertMtmSize[(sizeof(OPUS_NATIVE_MTM) == 8) ? 1 : -1];
 typedef char OpusAssertMudSize[(sizeof(OPUS_NATIVE_MUD) == 8) ? 1 : -1];
 typedef char OpusAssertSttbSize[(sizeof(OPUS_NATIVE_STTB) == 24) ? 1 : -1];
 
+/* An unresolved command leaves a NULL pfnCmd that crashes only when the
+   command is first dispatched, far from the cause. Log every failure at
+   resolve time -- to the debugger and to WORD1-cmdresolve.txt beside the
+   other diagnostics -- so a missing export is visible immediately. */
+static void LogUnresolvedCommand(const char *name)
+	{
+	char module_path[MAX_PATH];
+	char line[MAX_PATH + 64];
+	char *cut;
+	FILE *log;
+
+	memset(module_path, 0, sizeof(module_path));
+	GetModuleFileNameA(NULL, module_path, MAX_PATH);
+	OutputDebugStringA("WORD1: unresolved command function: ");
+	OutputDebugStringA(name);
+	OutputDebugStringA("\n");
+
+	/* <root>\bin\WORD1.exe -> <root>\build\WORD1-cmdresolve.txt */
+	if ((cut = strrchr(module_path, '\\')) != NULL)
+		*cut = '\0';
+	if ((cut = strrchr(module_path, '\\')) != NULL)
+		*cut = '\0';
+	snprintf(line, sizeof(line), "%s\\build\\WORD1-cmdresolve.txt", module_path);
+	if ((log = fopen(line, "a")) != NULL)
+		{
+		fprintf(log, "unresolved command function: %s\n", name);
+		fclose(log);
+		}
+	}
+
 static OPUS_PFN ResolveCommandAddress(const char *name)
 	{
 	HMODULE module = GetModuleHandleW(NULL);
+	OPUS_PFN pfn;
+
 	if (module == NULL)
 		return NULL;
-	return (OPUS_PFN)(uintptr_t)GetProcAddress(module, name);
+	pfn = (OPUS_PFN)(uintptr_t)GetProcAddress(module, name);
+	if (pfn == NULL)
+		LogUnresolvedCommand(name);
+	return pfn;
 	}
 
 static size_t CopySymbolPayload(OPUS_NATIVE_SY *symbol,

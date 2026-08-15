@@ -400,6 +400,15 @@ struct REBL
 	int     *pArgWrite;
 	char    rgch[cchMaxSz - 1];
 	};
+
+/* x64 port: PropToRtf takes its two predicate function pointers as the 5th
+   and 6th arguments -- stack positions in the Windows x64 calling convention.
+   Through an unprototyped call, a literal 0 there is stored as a 32-bit int,
+   leaving the stack slot's upper four bytes as garbage that the callee then
+   reads as a function pointer (crash observed in Save As). The prototype
+   makes the compiler widen every argument correctly. */
+int PropToRtf(struct REBL *prebl, char *pprop, int irrbFirst, int irrbLim,
+		int (*pfnFEmit)(), int (*pfnFPropToRtfSpec)());
 /* cch of worse case RTF tab string: \tqdec\tlhyph\tx99999  */
 #define cchMaxTabRtf 21
 /* cch of worse case RTF property string: \linerestart99999  */

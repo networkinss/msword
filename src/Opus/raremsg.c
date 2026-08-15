@@ -773,10 +773,10 @@ WORD cretry;
 
 
 /* %%Function:FRetrySdmError %%Owner:chic */
-BOOL FRetrySdmError(w, hdlg, sev)
-int w;
-HDLG hdlg;
-SEV sev;
+/* Prototype form matching sdm.h's declaration -- a K&R definition's promoted
+   parameter types conflict with the prototype under C99+. `w` was declared
+   `int` in the original K&R form but is unused in the body. */
+BOOL FRetrySdmError(WORD w, HDLG hdlg, SEV sev)
 {
 	extern int vsasCur;
 

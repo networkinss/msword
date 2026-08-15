@@ -7,12 +7,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    # windows-2022 pins the VS 2022 toolset the presets require; the image
-    # already ships CMake, the Windows 10/11 SDK and PowerShell, and this
-    # project has no package-manager dependencies, so nothing extra is
-    # installed here.
+  # --- MSVC (informational until first green) --------------------------------
+  # This path has never compiled anywhere: m93p has no Visual Studio, so CI is
+  # its only test bench. Kept non-blocking until it has gone green once; the
+  # clang jobs below are the authoritative signal meanwhile.
+  msvc:
     runs-on: windows-2022
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -24,7 +25,7 @@ jobs:
         working-directory: src
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Configure
         run: cmake --preset ${{ matrix.preset }}
@@ -45,17 +46,11 @@ jobs:
             throw "WORD1.exe (${{ matrix.preset }}) still imports the dynamic MSVC runtime."
           }
 
-      # Non-interactive tests: unit tests, the runtime/format tests and the
-      # process-startup smoke test.
       - name: Test (headless)
         run: |
           $config = if ('${{ matrix.preset }}' -eq 'x64-debug') { 'Debug' } else { 'Release' }
           ctest --test-dir ..\out -C $config --output-on-failure -E '^opus_word1_'
 
-      # The opus_word1_* tests drive a real window through the message queue and
-      # need a desktop session. Hosted runners usually provide one, but this is
-      # the fragile part of the pipeline, so it is reported without failing the
-      # build until it has proven stable.
       - name: Test (UI, informational)
         continue-on-error: true
         run: |
@@ -65,8 +60,103 @@ jobs:
       - name: Upload WORD1.exe
         uses: actions/upload-artifact@v4
         with:
-          name: WORD1-${{ matrix.preset }}
+          name: WORD1-msvc-${{ matrix.preset }}
           path: |
             bin/WORD1.exe
             build/pdb/**/WORD1.pdb
+          if-no-files-found: error
+
+  # --- clang / mingw-w64, x64 ------------------------------------------------
+  # Mirrors the proven m93p configuration exactly (MSYS2 MINGW64 clang). This
+  # is the configuration the project is developed and verified against.
+  clang-x64:
+    runs-on: windows-2022
+
+    defaults:
+      run:
+        shell: msys2 {0}
+        working-directory: src
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            mingw-w64-x86_64-clang
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+
+      - name: Configure
+        run: cmake --preset x64-clang-mingw-debug
+
+      - name: Build
+        run: cmake --build --preset x64-clang-mingw-debug
+
+      - name: Test (headless)
+        run: ctest --test-dir ../out-clang-mingw -C Debug --output-on-failure -E '^opus_word1_'
+
+      - name: Test (UI, informational)
+        continue-on-error: true
+        run: ctest --test-dir ../out-clang-mingw -C Debug --output-on-failure -R '^opus_word1_'
+
+      - name: Upload WORD1.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: WORD1-clang-x64
+          path: bin/WORD1.exe
+          if-no-files-found: error
+
+  # --- clang / mingw-w64, ARM64 (native) -------------------------------------
+  # windows-11-arm runners are genuine ARM64 Windows machines (free for public
+  # repos), so this job both builds natively -- the codegen tools run on the
+  # host, no cross-compilation split needed -- and executes the headless test
+  # suite on real ARM64 Windows. The resulting artifact is the ARM binary.
+  clang-arm64:
+    runs-on: windows-11-arm
+
+    defaults:
+      run:
+        shell: msys2 {0}
+        working-directory: src
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANGARM64
+          update: false
+          install: >-
+            mingw-w64-clang-aarch64-clang
+            mingw-w64-clang-aarch64-cmake
+            mingw-w64-clang-aarch64-ninja
+
+      - name: Provide windres name expected by the preset
+        run: |
+          command -v windres && exit 0
+          llvmrc=$(command -v llvm-windres) || { echo "no windres available" >&2; exit 1; }
+          cp "$llvmrc" "$(dirname "$llvmrc")/windres.exe"
+
+      - name: Configure
+        run: cmake --preset x64-clang-mingw-debug
+
+      - name: Build
+        run: cmake --build --preset x64-clang-mingw-debug
+
+      - name: Test (headless, native ARM64)
+        run: ctest --test-dir ../out-clang-mingw -C Debug --output-on-failure -E '^opus_word1_'
+
+      - name: Test (UI, informational)
+        continue-on-error: true
+        run: ctest --test-dir ../out-clang-mingw -C Debug --output-on-failure -R '^opus_word1_'
+
+      - name: Upload WORD1-arm64.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: WORD1-clang-arm64
+          path: bin/WORD1.exe
           if-no-files-found: error

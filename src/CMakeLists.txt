@@ -485,6 +485,25 @@ add_custom_command(
     COMMENT "Regenerating original Opus command tables with MKCMD"
     VERBATIM
 )
+# GNU ld ignores the MSVC-only `#pragma comment(linker, "/export:...")`
+# directives in opuscmd_native.inc, but the command dispatch resolves every
+# command function with GetProcAddress against WORD1.exe -- so those exports
+# are load-bearing. Re-express the same list as a .def file for the GNU
+# driver; see cmake/GenerateExportsDef.cmake.
+set(OPUS_GENERATED_EXPORTS_DEF "${OPUS_GENERATED_COMMAND_DIR}/word1_exports.def")
+add_custom_command(
+    OUTPUT "${OPUS_GENERATED_EXPORTS_DEF}"
+    COMMAND "${CMAKE_COMMAND}"
+        -DINPUT=${OPUS_GENERATED_COMMAND_DIR}/opuscmd_native.inc
+        -DOUTPUT=${OPUS_GENERATED_EXPORTS_DEF}
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateExportsDef.cmake"
+    DEPENDS
+        "${OPUS_GENERATED_COMMAND_DIR}/opuscmd_native.inc"
+        cmake/GenerateExportsDef.cmake
+    COMMENT "Regenerating command-function export list for the GNU linker"
+    VERBATIM
+)
+
 add_custom_target(opus_generated_commands
     DEPENDS ${OPUS_GENERATED_COMMAND_FILES}
 )
@@ -1010,7 +1029,18 @@ if(MSVC)
 else()
     target_compile_options(WORD1 PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS} ${OPUS_GNU_UTF8_OPTIONS})
     target_link_options(WORD1 PRIVATE
+        # The entry adapter defines wWinMain; -municode selects mingw's wide
+        # CRT startup (wWinMainCRTStartup), which calls it. Without this the
+        # default startup looks for the ANSI WinMain and the link fails.
+        -municode
         -Wl,--dynamicbase -Wl,--high-entropy-va -Wl,--nxcompat)
+    # Export the command functions so the dispatch's GetProcAddress lookups
+    # resolve (the .def replaces the MSVC-only /export: pragmas). Passed as an
+    # explicit linker input: CMake's .def-as-source handling does not apply to
+    # the clang + GNU-driver toolchain, which silently dropped it.
+    target_link_options(WORD1 PRIVATE "${OPUS_GENERATED_EXPORTS_DEF}")
+    set_property(TARGET WORD1 APPEND PROPERTY LINK_DEPENDS "${OPUS_GENERATED_EXPORTS_DEF}")
+    target_sources(WORD1 PRIVATE "${OPUS_GENERATED_EXPORTS_DEF}")
 endif()
 set_target_properties(WORD1 PROPERTIES
     FOLDER "Original Opus x64/product"
@@ -1029,7 +1059,13 @@ target_compile_features(opus_original_startup_probe PRIVATE cxx_std_20)
 target_compile_definitions(opus_original_startup_probe PRIVATE
     WIN WIN23 CRLF NONATIVE OPUS_X64 NOMINMAX UNICODE _UNICODE
 )
-target_link_libraries(opus_original_startup_probe PRIVATE opus_original_engine opus_x64_runtime user32 dbghelp)
+target_link_libraries(opus_original_startup_probe PRIVATE opus_original_engine opus_x64_runtime user32 imm32 dbghelp)
+if(NOT MSVC)
+    target_link_options(opus_original_startup_probe PRIVATE -municode)
+    target_link_options(opus_original_startup_probe PRIVATE "${OPUS_GENERATED_EXPORTS_DEF}")
+    set_property(TARGET opus_original_startup_probe APPEND PROPERTY LINK_DEPENDS "${OPUS_GENERATED_EXPORTS_DEF}")
+    target_sources(opus_original_startup_probe PRIVATE "${OPUS_GENERATED_EXPORTS_DEF}")
+endif()
 set_target_properties(opus_original_startup_probe PROPERTIES
     FOLDER "Original Opus x64/port probes"
     RUNTIME_OUTPUT_DIRECTORY "${MSWORD_BUILD_ROOT}/probes"
@@ -1082,7 +1118,9 @@ target_include_directories(opus_x64_runtime_test PRIVATE ${OPUS_ORIGINAL_INCLUDE
 # OpusExportCurrentDocumentPdf), so the runtime cannot link standalone. WORD1
 # never noticed because it links both.
 target_link_libraries(opus_x64_runtime_test PRIVATE
-    opus_x64_runtime opus_original_engine user32 gdi32)
+    # imm32: opus_win95_chrome.cpp (in the engine) calls the IMM composition
+    # APIs; any target linking the engine needs it.
+    opus_x64_runtime opus_original_engine user32 gdi32 imm32)
 set_target_properties(opus_x64_runtime_test PROPERTIES
     FOLDER "Original Opus x64/tests"
     RUNTIME_OUTPUT_DIRECTORY "${MSWORD_BUILD_ROOT}/tests"
@@ -1129,6 +1167,9 @@ if(MSVC)
     target_compile_options(opus_word1_ui_test PRIVATE /W4 /utf-8)
 else()
     target_compile_options(opus_word1_ui_test PRIVATE ${OPUS_GNU_UTF8_OPTIONS})
+    # The test's entry point is wmain; -municode selects mingw's wide CRT
+    # startup (MSVC picks it automatically).
+    target_link_options(opus_word1_ui_test PRIVATE -municode)
 endif()
 set_target_properties(opus_word1_ui_test PROPERTIES
     FOLDER "Original Opus x64/tests"

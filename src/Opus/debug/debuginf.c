@@ -1,8 +1,8 @@
+#include "opus_lvalue_cast.h"
 /* D E B U G C M D . C */
 #ifdef DEBUG
 
 #include "word.h"
-#include "opus_lvalue_cast.h"
 DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #include "heap.h"
 #include "props.h"

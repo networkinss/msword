@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+// std::size — MSVC's STL provides it transitively; libstdc++ needs <iterator>.
+#include <iterator>
 #include <limits>
 
 /* AMD64 translation of FILEWINN.ASM.  Word continues to open files through

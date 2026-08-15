@@ -3,6 +3,8 @@
 
 #include <array>
 #include <cstring>
+// std::uint32_t: MSVC's STL provides <cstdint> transitively; libstdc++ does not.
+#include <cstdint>
 #include <cwchar>
 #include <fstream>
 #include <iostream>
@@ -704,6 +706,9 @@ int wmain(const int argument_count, wchar_t** arguments) {
         argument_count == 4 &&
         (std::wcscmp(arguments[2], L"--docx-open") == 0 ||
          formatted_docx_open_mode);
+    const bool save_as_roundtrip_mode =
+        argument_count == 4 &&
+        std::wcscmp(arguments[2], L"--save-as-roundtrip") == 0;
     if (argument_count == 3 && !typing_mode && !interaction_mode &&
         !selection_mode && !caret_mode && !formatting_mode && !color_mode &&
         !font_typing_mode && !unicode_mode && !clipboard_mode && !about_mode &&
@@ -711,7 +716,7 @@ int wmain(const int argument_count, wchar_t** arguments) {
         std::cerr << "unknown test mode\n";
         return 1;
     }
-    if (argument_count == 4 && !docx_open_mode) {
+    if (argument_count == 4 && !docx_open_mode && !save_as_roundtrip_mode) {
         std::cerr << "unknown test mode\n";
         return 1;
     }
@@ -734,6 +739,13 @@ int wmain(const int argument_count, wchar_t** arguments) {
             std::cerr << "DOCX open test file does not exist\n";
             return 83;
         }
+    }
+    std::wstring roundtrip_path;
+    if (save_as_roundtrip_mode) {
+        roundtrip_path = arguments[3];
+        SetEnvironmentVariableW(L"WORD1_TEST_FILE_DIALOG_PATH",
+                                roundtrip_path.c_str());
+        DeleteFileW(roundtrip_path.c_str());
     }
     if (docx_open_mode) {
         SetEnvironmentVariableA("WORD1_TEST_FILE_DIALOG_PATH",
@@ -850,6 +862,115 @@ int wmain(const int argument_count, wchar_t** arguments) {
                       << exit_code << std::dec << '\n';
             return 86;
         }
+        return 0;
+    }
+    if (save_as_roundtrip_mode) {
+        // Diagnostic probe for the post-save state of a .docx Save As:
+        // 1) type text, 2) save through the dialog test hook, 3) reopen the
+        // real dialog and dump the proposed filename byte-for-byte, 4) close
+        // the app and dump any save prompt. Always exits 0; findings go to
+        // stderr for a human to read.
+        Sleep(1000);
+        DWORD ignored_process_id = 0;
+        const DWORD thread_id =
+            GetWindowThreadProcessId(main_window, &ignored_process_id);
+        GUITHREADINFO gui{};
+        gui.cbSize = sizeof(gui);
+        if (GetGUIThreadInfo(thread_id, &gui) && gui.hwndFocus != nullptr) {
+            for (const wchar_t character : std::wstring(L"roundtrip probe")) {
+                PostMessageW(gui.hwndFocus, WM_CHAR,
+                             static_cast<WPARAM>(character), 0);
+            }
+        }
+        Sleep(500);
+        if (!PostMessageW(main_window, kWmCommand, kFileSaveAs, 0)) {
+            return fail(process, 90, "roundtrip: could not send Save As");
+        }
+        for (int wait = 0; wait != 100; ++wait) {
+            if (GetFileAttributesW(roundtrip_path.c_str()) !=
+                INVALID_FILE_ATTRIBUTES) {
+                break;
+            }
+            Sleep(100);
+        }
+        const bool file_written =
+            GetFileAttributesW(roundtrip_path.c_str()) !=
+            INVALID_FILE_ATTRIBUTES;
+        std::cerr << "probe: docx written=" << file_written << '\n';
+        Sleep(1000);
+
+        wchar_t caption[512]{};
+        GetWindowTextW(main_window, caption,
+                       static_cast<int>(std::size(caption)));
+        std::cerr << "probe: caption codepoints:";
+        for (const wchar_t* pch = caption; *pch != L'\0'; ++pch) {
+            std::cerr << ' ' << static_cast<unsigned>(*pch);
+        }
+        std::cerr << '\n';
+
+        // Second Save As: env hook was consumed, so the real dialog opens.
+        PostMessageW(main_window, kWmCommand, kFileSaveAs, 0);
+        const HWND dialog = wait_for_window(
+            process.hProcess, process.dwProcessId, L"#32770", L"Save As",
+            5000);
+        if (dialog != nullptr) {
+            Sleep(500);
+            // cmb13 (1148) is the filename combo in Explorer-style dialogs;
+            // edt1 (1152) on some configurations.
+            for (const int control_id : {1148, 1152}) {
+                const HWND control = GetDlgItem(dialog, control_id);
+                if (control == nullptr) continue;
+                wchar_t proposed[512]{};
+                SendMessageW(control, WM_GETTEXT, std::size(proposed),
+                             reinterpret_cast<LPARAM>(proposed));
+                std::cerr << "probe: dialog control " << control_id
+                          << " codepoints:";
+                for (const wchar_t* pch = proposed; *pch != L'\0'; ++pch) {
+                    std::cerr << ' ' << static_cast<unsigned>(*pch);
+                }
+                std::cerr << '\n';
+            }
+            PostMessageW(dialog, kWmCommand, 2, 0);  // cancel
+            wait_for_window_to_close(process.hProcess, process.dwProcessId,
+                                     L"#32770", 5000);
+        } else {
+            std::cerr << "probe: second Save As dialog did not appear\n";
+        }
+
+        // Close the app; if a save prompt appears, dump its text tree.
+        PostMessageW(main_window, WM_CLOSE, 0, 0);
+        const HWND prompt = wait_for_window(
+            process.hProcess, process.dwProcessId, L"#32770", nullptr, 4000);
+        if (prompt != nullptr) {
+            wchar_t prompt_caption[256]{};
+            GetWindowTextW(prompt, prompt_caption,
+                           static_cast<int>(std::size(prompt_caption)));
+            std::wcerr << L"probe: close prompt caption=[" << prompt_caption
+                       << L"]\n";
+            for (HWND child = GetWindow(prompt, GW_CHILD); child != nullptr;
+                 child = GetWindow(child, GW_HWNDNEXT)) {
+                wchar_t child_class[64]{};
+                wchar_t child_text[512]{};
+                GetClassNameW(child, child_class,
+                              static_cast<int>(std::size(child_class)));
+                SendMessageW(child, WM_GETTEXT, std::size(child_text),
+                             reinterpret_cast<LPARAM>(child_text));
+                if (child_text[0] == L'\0') continue;
+                std::wcerr << L"probe: child " << child_class << L" [";
+                for (const wchar_t* pch = child_text; *pch != L'\0'; ++pch) {
+                    if (*pch >= 32 && *pch < 127) std::wcerr << *pch;
+                    else std::wcerr << L"<" << static_cast<unsigned>(*pch)
+                                    << L">";
+                }
+                std::wcerr << L"]\n";
+            }
+        } else {
+            std::cerr << "probe: no prompt on close\n";
+        }
+        TerminateProcess(process.hProcess, 0);
+        WaitForSingleObject(process.hProcess, 2000);
+        CloseHandle(process.hThread);
+        CloseHandle(process.hProcess);
         return 0;
     }
     if (save_as_mode) {

@@ -3844,7 +3844,11 @@ QuicksaveCommands()
 
 /* %%Function:QuicksaveSttb %%Owner:davidlu */
 QuicksaveSttb(hsttb, pfc, pcb, pfcDestLim)
-struct STTB * hsttb;
+/* hsttb is a handle (Hungarian `h`): the body dereferences it once for
+   CbSttbf(*hsttb) and passes it whole to WriteSttbToFile, which takes
+   struct STTB **. The original single-star declaration was a typo the
+   16-bit compiler's unprototyped calls never caught. */
+struct STTB ** hsttb;
 FC * pfc;
 int * pcb;
 FC * pfcDestLim;

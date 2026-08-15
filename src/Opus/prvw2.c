@@ -821,16 +821,15 @@ int *pza;
 
 
 /* %%Function:FEqualPt %%Owner:davidbo */
-FEqualPt(lpt1,lpt2)
-long lpt1,lpt2;
+/* Originally took the two PTs as longs so a 4-byte struct compared in one
+   operation; on x64 struct PT is 8 bytes and long is 4, so that trick (and
+   its sizeof Assert) no longer holds. Compare the coordinates directly --
+   same result, no layout assumption. */
+FEqualPt(pt1,pt2)
+struct PT pt1,pt2;
 {
 	/* Returns true if pt1 == pt2 */
-	/*
-	*  Note: using longs so we can do one comparison rather than
-	*  having to individually compare each element of the PT struct.
-	*/
-	Assert(sizeof(long) == sizeof(struct PT));
-	return(lpt1 == lpt2);
+	return(pt1.xp == pt2.xp && pt1.yp == pt2.yp);
 }
 
 

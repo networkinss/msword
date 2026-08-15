@@ -2611,6 +2611,67 @@ int OpusWin95OpenAliasIsDocx(const unsigned char* st_file) {
             OpusModernPathIsOdt(saved->second.c_str()));
 }
 
+/* --- Modern-format save adoption ------------------------------------------
+   Original Word treats a foreign-format save (RTF/Text) as exporting a copy:
+   the document stays dirty and keeps its "Document1" identity. For .docx and
+   .odt that is the wrong mental model -- the modern file is a full-fidelity
+   home -- so, by explicit project decision, a successful modern-format save
+   adopts the chosen name for display and clears the dirty flag. The engine
+   participates through two OPUS_X64 islands: save.c calls
+   OpusWin95SaveAliasAdoptModern after the alias finishes, and wwchange.c's
+   GetDocSt asks OpusWin95AliasDocDisplaySt for an override name. The mapping
+   is per doc id and forgotten on DisposeDoc (doc ids are reused). It also
+   stands down if the doc later acquires a real file (fn != fnNil) -- native
+   saves keep original semantics untouched. */
+
+std::unordered_map<int, std::string> g_modern_doc_names;
+
+int OpusWin95SaveAliasAdoptModern(const unsigned char* st_file,
+                                  const int doc) {
+    const std::string path = counted_path(st_file);
+    if (path.empty()) return false;
+    const auto saved = g_win95_saved_aliases.find(win95_alias_key(path));
+    if (saved == g_win95_saved_aliases.end() ||
+        (!OpusModernPathIsDocx(saved->second.c_str()) &&
+         !OpusModernPathIsOdt(saved->second.c_str()))) {
+        return false;
+    }
+    g_modern_doc_names[doc] = saved->second;
+    return true;
+}
+
+/* gdso flag values from Opus/wordwin.h. kGdsoShortName always yields the
+   leaf; kGdsoRelative (what window titles use) yields the leaf when the file
+   lives in the current directory, mirroring the original relativizer. */
+int OpusWin95AliasDocDisplaySt(const int doc, unsigned char* st,
+                               const int gdso) {
+    constexpr int kGdsoRelative = 0x0010;
+    constexpr int kGdsoShortName = 0x0020;
+    constexpr std::size_t kMaxSt = 119;  /* ichMaxFile - 1 */
+    if (st == nullptr) return false;
+    const auto found = g_modern_doc_names.find(doc);
+    if (found == g_modern_doc_names.end()) return false;
+    std::string name = found->second;
+    const std::size_t slash = name.find_last_of("\\/");
+    /* Modern UX: anywhere a shortened form is acceptable (titles use
+       kGdsoRelative, prompts use kGdsoShortName), show just the leaf --
+       matching how current Word titles documents. Full-path requests
+       (gdsoFullPath == 0) still get the complete path. */
+    if ((gdso & (kGdsoShortName | kGdsoRelative)) != 0 &&
+        slash != std::string::npos) {
+        name = name.substr(slash + 1);
+    }
+    if (name.empty() || name.size() > kMaxSt) return false;
+    st[0] = static_cast<unsigned char>(name.size());
+    std::memcpy(st + 1, name.data(), name.size());
+    st[name.size() + 1] = 0;
+    return true;
+}
+
+void OpusWin95AliasForgetDoc(const int doc) {
+    g_modern_doc_names.erase(doc);
+}
+
 struct OpusSdsCompat {
     std::uintptr_t current_segment;
     std::uintptr_t focus_segment;

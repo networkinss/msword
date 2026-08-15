@@ -1767,6 +1767,19 @@ int gdso;
 
 	Assert (doc < docMac && doc >= docNil);
 
+#ifdef OPUS_X64
+	/* Modern-format adoption: a doc saved as .docx/.odt displays the chosen
+		name (titles, prompts, dialog proposals) even though the engine still
+		treats the on-disk staging file as foreign. Once the doc acquires a
+		real native file the override stands down below. */
+	{
+	extern int OpusWin95AliasDocDisplaySt();
+	if ((mpdochdod[doc] == hNil || (*mpdochdod[doc])->fn == fnNil) &&
+			OpusWin95AliasDocDisplaySt(doc, st, gdso))
+		return;
+	}
+#endif
+
 	/* Only dkDoc's and dkDot's have names */
 	if ((hdod = mpdochdod [doc]) == hNil || !((*hdod)->dk & (dkDoc | dkDot)))
 		return;
