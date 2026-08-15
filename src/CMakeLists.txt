@@ -22,6 +22,31 @@ endif()
 # does not produce a diagnostic -- it silently changes comparisons of high-bit
 # characters.
 set(OPUS_GNU_ORIGINAL_C_OPTIONS -funsigned-char)
+if(MSVC)
+    # The MSVC counterpart of the clang suppressions below: these legacy-C
+    # diagnostics fire tens of thousands of times across ~400 K&R-era
+    # translation units, which truncates CI logs before the real errors are
+    # reached. Suppressed for C only -- port-written C++ keeps full warnings.
+    #   C4013 undefined function, assuming extern returning int
+    #   C4033 function must return a value
+    #   C4091 'extern' ignored on left of type
+    #   C4131 uses old-style declarator (K&R)
+    #   C4229 anachronism: modifiers on data ignored
+    #   C4244/C4267 integral/size_t narrowing conversions
+    #   C4477 printf format vs argument width
+    #   C4996 deprecated CRT names
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:C>:/wd4013>
+        $<$<COMPILE_LANGUAGE:C>:/wd4033>
+        $<$<COMPILE_LANGUAGE:C>:/wd4091>
+        $<$<COMPILE_LANGUAGE:C>:/wd4131>
+        $<$<COMPILE_LANGUAGE:C>:/wd4229>
+        $<$<COMPILE_LANGUAGE:C>:/wd4244>
+        $<$<COMPILE_LANGUAGE:C>:/wd4267>
+        $<$<COMPILE_LANGUAGE:C>:/wd4477>
+        $<$<COMPILE_LANGUAGE:C>:/wd4996>)
+endif()
+
 if(NOT MSVC)
     # -funsigned-char is the /J counterpart and must hold for EVERY C
     # translation unit, not just those whose target picks up

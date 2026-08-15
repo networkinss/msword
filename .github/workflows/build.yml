@@ -30,8 +30,27 @@ jobs:
       - name: Configure
         run: cmake --preset ${{ matrix.preset }}
 
+      # Tee the build so a failure can be summarized: GitHub truncates very
+      # large step logs, which previously hid the actual errors.
       - name: Build
-        run: cmake --build --preset ${{ matrix.preset }}
+        run: |
+          cmake --build --preset ${{ matrix.preset }} 2>&1 | Tee-Object -FilePath ../build-msvc.log
+          exit $LASTEXITCODE
+
+      - name: Error summary
+        if: failure()
+        run: |
+          Write-Host "=== error lines ==="
+          Select-String -Path ../build-msvc.log -Pattern 'error [A-Z]+[0-9]+|fatal error' |
+            Select-Object -First 60 | ForEach-Object { $_.Line }
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-msvc-${{ matrix.preset }}
+          path: build-msvc.log
+          if-no-files-found: ignore
 
       - name: Verify no dynamic CRT dependency
         run: |
@@ -94,7 +113,23 @@ jobs:
         run: cmake --preset x64-clang-mingw-debug
 
       - name: Build
-        run: cmake --build --preset x64-clang-mingw-debug
+        run: |
+          set -o pipefail
+          cmake --build --preset x64-clang-mingw-debug 2>&1 | tee ../build-x64.log
+
+      - name: Error summary
+        if: failure()
+        run: |
+          echo "=== error lines ==="
+          grep -E "error:|FAILED|undefined reference" ../build-x64.log | head -60 || true
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-x64
+          path: build-x64.log
+          if-no-files-found: ignore
 
       - name: Test (headless)
         run: ctest --test-dir ../out-clang-mingw -C Debug --output-on-failure -E '^opus_word1_'
@@ -145,7 +180,23 @@ jobs:
         run: cmake --preset x64-clang-mingw-debug
 
       - name: Build
-        run: cmake --build --preset x64-clang-mingw-debug
+        run: |
+          set -o pipefail
+          cmake --build --preset x64-clang-mingw-debug 2>&1 | tee ../build-arm64.log
+
+      - name: Error summary
+        if: failure()
+        run: |
+          echo "=== error lines ==="
+          grep -E "error:|FAILED|undefined reference" ../build-arm64.log | head -60 || true
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-arm64
+          path: build-arm64.log
+          if-no-files-found: ignore
 
       - name: Test (headless, native ARM64)
         run: ctest --test-dir ../out-clang-mingw -C Debug --output-on-failure -E '^opus_word1_'
