@@ -37,7 +37,9 @@ jobs:
       # and is uploaded as an artifact on failure.
       - name: Build
         run: |
-          cmake --build --preset ${{ matrix.preset }} -- -verbosity:quiet -consoleLoggerParameters:NoSummary 2>&1 |
+          # Quote the MSBuild switches: PowerShell otherwise splits them at the
+          # colon into "-verbosity: quiet", which MSBuild rejects (MSB1016).
+          cmake --build --preset ${{ matrix.preset }} -- '-verbosity:quiet' '-consoleLoggerParameters:NoSummary' 2>&1 |
             Tee-Object -FilePath ../build-msvc.log
           exit $LASTEXITCODE
 
