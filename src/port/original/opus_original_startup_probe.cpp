@@ -62,7 +62,7 @@ void BuildDiagnosticPath(const char* file_name, char* path, size_t path_size) {
 
 void ResetRibbonTrace() {
     char trace_path[MAX_PATH] = {};
-    BuildDiagnosticPath("WORD1-ribbon.txt", trace_path, sizeof(trace_path));
+    BuildDiagnosticPath("vintageword-ribbon.txt", trace_path, sizeof(trace_path));
     HANDLE file = CreateFileA(trace_path, GENERIC_WRITE,
                               FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
                               CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -70,7 +70,7 @@ void ResetRibbonTrace() {
         return;
     }
     char header[128] = {};
-    std::snprintf(header, sizeof(header), "WORD1 ribbon trace pid=%lu\r\n",
+    std::snprintf(header, sizeof(header), "vintageword ribbon trace pid=%lu\r\n",
                   GetCurrentProcessId());
     WriteCrashText(file, header);
     CloseHandle(file);
@@ -87,7 +87,7 @@ void WriteCurrentStack(HANDLE file, unsigned frames_to_skip) {
         const auto address = reinterpret_cast<std::uintptr_t>(frames[index]);
         if (address >= module_base) {
             std::snprintf(raw_line, sizeof(raw_line),
-                          "raw #%u 0x%016llX WORD1+0x%llX\r\n", index,
+                          "raw #%u 0x%016llX vintageword+0x%llX\r\n", index,
                           static_cast<unsigned long long>(address),
                           static_cast<unsigned long long>(address - module_base));
         } else {
@@ -147,7 +147,7 @@ int __cdecl WriteRtcFailure(int error_type, const wchar_t* file_name,
                             int line, const wchar_t* module_name,
                             const wchar_t* format, ...) {
     char diagnostic_path[MAX_PATH] = {};
-    BuildDiagnosticPath("WORD1-rtc.txt", diagnostic_path,
+    BuildDiagnosticPath("vintageword-rtc.txt", diagnostic_path,
                         sizeof(diagnostic_path));
     HANDLE file = CreateFileA(diagnostic_path, GENERIC_WRITE, FILE_SHARE_READ,
                               nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL,
@@ -177,7 +177,7 @@ int __cdecl WriteRtcFailure(int error_type, const wchar_t* file_name,
 
 LONG WINAPI WriteCrashStack(EXCEPTION_POINTERS* exception) {
     char crash_path[MAX_PATH] = {};
-    BuildDiagnosticPath("WORD1-crash.txt", crash_path, sizeof(crash_path));
+    BuildDiagnosticPath("vintageword-crash.txt", crash_path, sizeof(crash_path));
 
     HANDLE file = CreateFileA(crash_path, GENERIC_WRITE, FILE_SHARE_READ,
                               nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL,
@@ -267,7 +267,7 @@ LONG WINAPI WriteCrashStack(EXCEPTION_POINTERS* exception) {
         const DWORD64 control_pc = context_pc(unwind_context);
         if (control_pc >= module_base && control_pc < module_limit) {
             std::snprintf(line_text, sizeof(line_text),
-                          "unwind #%u WORD1+0x%llX rsp=0x%llX\r\n", index,
+                          "unwind #%u vintageword+0x%llX rsp=0x%llX\r\n", index,
                           static_cast<unsigned long long>(control_pc - module_base),
                           static_cast<unsigned long long>(context_sp(unwind_context)));
         } else {
@@ -310,7 +310,7 @@ LONG WINAPI WriteCrashStack(EXCEPTION_POINTERS* exception) {
             *reinterpret_cast<const std::uintptr_t*>(cursor);
         if (candidate >= module_base && candidate < module_limit) {
             std::snprintf(line_text, sizeof(line_text),
-                          "stack+0x%llX: WORD1+0x%llX\r\n",
+                          "stack+0x%llX: vintageword+0x%llX\r\n",
                           static_cast<unsigned long long>(cursor - stack_begin),
                           static_cast<unsigned long long>(candidate - module_base));
             WriteCrashText(file, line_text);

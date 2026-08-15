@@ -23,11 +23,11 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "Microsoft (historical source)"
-            VALUE "FileDescription", "WORD1 original Opus x64 port"
+            VALUE "FileDescription", "VintageWord - Microsoft Word 1.1a (1990) x64 port"
             VALUE "FileVersion", "0.2.0"
-            VALUE "InternalName", "WORD1"
-            VALUE "OriginalFilename", "WORD1.exe"
-            VALUE "ProductName", "Microsoft Word/Opus x64 Source Port"
+            VALUE "InternalName", "vintageword"
+            VALUE "OriginalFilename", "vintageword.exe"
+            VALUE "ProductName", "VintageWord (Microsoft Word 1.1a source port)"
             VALUE "ProductVersion", "0.2.0"
         END
     END

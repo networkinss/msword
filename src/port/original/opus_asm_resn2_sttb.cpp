@@ -42,7 +42,7 @@ void TraceInvalidSttb(const char* const reason, const int index,
         const auto address = reinterpret_cast<std::uintptr_t>(frames[frame]);
         if (address >= module_base) {
             std::snprintf(message, sizeof(message),
-                          "PstFromSttb caller #%u WORD1+0x%llx", frame,
+                          "PstFromSttb caller #%u vintageword+0x%llx", frame,
                           static_cast<unsigned long long>(address - module_base));
             OpusX64Trace(message);
         }

@@ -8,3 +8,6 @@
 /error.txt
 /msvc.txt
 /arm64.txt
+
+# Local guidance file, not part of the repository
+/CLAUDE.md

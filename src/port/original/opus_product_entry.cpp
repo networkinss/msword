@@ -51,7 +51,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command_line, int) {
     if (result != 0) {
         MessageBoxW(nullptr,
                     L"The original Opus engine startup check failed.",
-                    L"WORD1 x64 port", MB_OK | MB_ICONERROR);
+                    L"VintageWord x64 port", MB_OK | MB_ICONERROR);
         return result;
     }
 
@@ -67,6 +67,6 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command_line, int) {
                 L"menu, and key tables. The original UI, document/file, and "
                 L"converter dependency graphs are not linked into this "
                 L"executable yet.",
-                L"WORD1 x64 source port", MB_OK | MB_ICONINFORMATION);
+                L"VintageWord x64 source port", MB_OK | MB_ICONINFORMATION);
     return 0;
 }

@@ -22,8 +22,14 @@
 #define nProductCurrent (((nMajorProduct&0x07)<<13)+((nMinorProduct&0x3f)<<7)+\
                         ((nRevProduct&0x3f)<<1)+(nIncrProduct?1:0))
 
-#define szAppDef        "Microsoft Word"
-#define stAppDef	"\016Microsoft Word"
+/* Port identity. This build is not Microsoft Word: it is the 1990 Word 1.1a
+   engine plus a modern export layer, so it presents itself as VintageWord to
+   avoid implying otherwise. szApp doubles as the win.ini profile section, and
+   SetAppCaptionFromHwnd asserts CchSz(szAppTitle) < 29 (it composes
+   "<title> - <document>" into a 32-byte buffer), so the caption stays short;
+   the full provenance lives in szAppStartDef and the version resource. */
+#define szAppDef        "VintageWord"
+#define stAppDef	"\013VintageWord"
 
 #ifdef MKTGPRVW
 extern CHAR szAppTitle[];
@@ -38,7 +44,7 @@ extern CHAR szAppTitle[];
 #endif /* DEMO */
 #endif /* MKTGPRVW */
 
-#define szAppStartDef   "Microsoft Word for Windows"
+#define szAppStartDef   "VintageWord - Microsoft Word 1.1a (1990)"
 #define szCopyrightDef	"Copyright © 1989-1990 Microsoft Corporation."
 #define szCopyright2Def "Electronic Thesaurus © 1987 HMCo.  All rights reserved."
 

@@ -37,5 +37,5 @@ No Visual Studio and no Windows SDK are required for the clang build.
   (from `C:\dev\msword`).
 
 Build output lands in `out-clang-mingw\` (CMake), `build\` (tests, PDBs,
-diagnostics), `bin\WORD1.exe`. Runtime crash diagnostics are written to
-`build\WORD1-crash.txt` and `build\WORD1-cmdresolve.txt`.
+diagnostics), `bin\vintageword.exe`. Runtime crash diagnostics are written to
+`build\vintageword-crash.txt` and `build\vintageword-cmdresolve.txt`.

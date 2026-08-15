@@ -1,6 +1,6 @@
 # Build Requirements
 
-This document describes what is needed to compile `WORD1.exe` from this
+This document describes what is needed to compile `vintageword.exe` from this
 repository, and what the resulting binary depends on at runtime.
 
 ## To compile
@@ -41,7 +41,7 @@ that are not present in the source archive.
 
 ## Runtime dependencies of the compiled binary
 
-The compiled `WORD1.exe` runs on a clean Windows 10/11 install with **no
+The compiled `vintageword.exe` runs on a clean Windows 10/11 install with **no
 further dependencies**:
 
 - All directly linked libraries (`user32.dll`, `gdi32.dll`, `ole32.dll`,
@@ -51,7 +51,7 @@ further dependencies**:
 - The MSVC C/C++ runtime is linked **statically**: `src/CMakeLists.txt`
   sets `CMAKE_MSVC_RUNTIME_LIBRARY` to
   `MultiThreaded$<$<CONFIG:Debug>:Debug>` (`/MT` in Release, `/MTd` in
-  Debug). `WORD1.exe` therefore does **not** need the Visual C++
+  Debug). `vintageword.exe` therefore does **not** need the Visual C++
   Redistributable (`vcruntime140.dll`, `msvcp140.dll`, …) on the target
   machine.
 - The behaviour is controlled by the `MSWORD_STATIC_CRT` CMake option,

@@ -26,7 +26,7 @@ if not exist "%REPO%\out-clang-mingw\CMakeCache.txt" (
 
 if /i "%ACTION%"=="build" (
     cmake --build --preset x64-clang-mingw-debug || exit /b 1
-    echo Build OK: %REPO%\bin\WORD1.exe
+    echo Build OK: %REPO%\bin\vintageword.exe
     goto :eof
 )
 
@@ -39,7 +39,7 @@ if /i "%ACTION%"=="test" (
 )
 
 if /i "%ACTION%"=="run" (
-    start "" "%REPO%\bin\WORD1.exe"
+    start "" "%REPO%\bin\vintageword.exe"
     goto :eof
 )
 

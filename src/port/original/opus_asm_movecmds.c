@@ -172,7 +172,7 @@ typedef char OpusAssertSttbSize[(sizeof(OPUS_NATIVE_STTB) == 24) ? 1 : -1];
 
 /* An unresolved command leaves a NULL pfnCmd that crashes only when the
    command is first dispatched, far from the cause. Log every failure at
-   resolve time -- to the debugger and to WORD1-cmdresolve.txt beside the
+   resolve time -- to the debugger and to vintageword-cmdresolve.txt beside the
    other diagnostics -- so a missing export is visible immediately. */
 static void LogUnresolvedCommand(const char *name)
 	{
@@ -183,16 +183,16 @@ static void LogUnresolvedCommand(const char *name)
 
 	memset(module_path, 0, sizeof(module_path));
 	GetModuleFileNameA(NULL, module_path, MAX_PATH);
-	OutputDebugStringA("WORD1: unresolved command function: ");
+	OutputDebugStringA("vintageword: unresolved command function: ");
 	OutputDebugStringA(name);
 	OutputDebugStringA("\n");
 
-	/* <root>\bin\WORD1.exe -> <root>\build\WORD1-cmdresolve.txt */
+	/* <root>\bin\vintageword.exe -> <root>\build\vintageword-cmdresolve.txt */
 	if ((cut = strrchr(module_path, '\\')) != NULL)
 		*cut = '\0';
 	if ((cut = strrchr(module_path, '\\')) != NULL)
 		*cut = '\0';
-	snprintf(line, sizeof(line), "%s\\build\\WORD1-cmdresolve.txt", module_path);
+	snprintf(line, sizeof(line), "%s\\build\\vintageword-cmdresolve.txt", module_path);
 	if ((log = fopen(line, "a")) != NULL)
 		{
 		fprintf(log, "unresolved command function: %s\n", name);

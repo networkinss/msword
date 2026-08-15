@@ -27,7 +27,7 @@ mingw-w64 toolchain, Ninja and CMake (no Visual Studio, no Windows SDK), but
 does not yet build to completion - see `TODO.md`.
 
 The MSVC runtime is linked statically (`/MT`, `/MTd`), so the resulting
-`WORD1.exe` runs on a clean Windows 10/11 install without the Visual C++
+`vintageword.exe` runs on a clean Windows 10/11 install without the Visual C++
 Redistributable. See `REQUIREMENTS.md` for details and the
 `MSWORD_STATIC_CRT` option.
 
@@ -43,7 +43,7 @@ Set-Location msword\src
 cmake --preset x64-debug
 cmake --build --preset x64-debug
 
-& ..\bin\WORD1.exe
+& ..\bin\vintageword.exe
 ```
 
 For an optimized build, use the release preset instead:
@@ -51,18 +51,18 @@ For an optimized build, use the release preset instead:
 ```powershell
 cmake --preset x64-release
 cmake --build --preset x64-release
-& ..\bin\WORD1.exe
+& ..\bin\vintageword.exe
 ```
 
 The presets use the Visual Studio 2022 x64 generator. After configuration, the
 generated solution can also be opened directly from
-`out\MicrosoftWordX64Port.sln`; use `WORD1` as the startup project.
+`out\MicrosoftWordX64Port.sln`; use `vintageword` as the startup project.
 
 ### mingw-w64 (experimental, not yet working)
 
 `x64-mingw-debug` / `x64-mingw-release` configure the same source tree with
 mingw-w64 GCC and Ninja, building into `out-mingw\` so a Visual Studio build in
-`out\` is left untouched. **This path does not produce a working `WORD1.exe`
+`out\` is left untouched. **This path does not produce a working `vintageword.exe`
 yet** - the CMake plumbing is in place, but several source-level and
 build-ordering issues remain open. See `TODO.md` for the exact list and the
 current state of the investigation.
@@ -92,7 +92,7 @@ dialogs, and saving.
 ## Continuous integration
 
 `.github/workflows/build.yml` configures, builds and tests both presets on a
-GitHub-hosted `windows-2022` runner and uploads `WORD1.exe` as a build
+GitHub-hosted `windows-2022` runner and uploads `vintageword.exe` as a build
 artifact. The interactive `opus_word1_*` UI tests run there in a
 report-only step, since they need a desktop session.
 
@@ -137,7 +137,7 @@ reference while ensuring all shipped code is valid for AMD64.
 
 | Target | Description |
 | --- | --- |
-| `WORD1` | The native x64 Microsoft Word executable |
+| `vintageword` | The native x64 Microsoft Word executable |
 | `opus_original_engine` | Original Word application engine compiled for x64 |
 | `opus_x64_runtime` | Native runtime and translated assembly behavior |
 | `opus_word1_ui_test` | Automated end-to-end UI test driver |
@@ -146,7 +146,7 @@ reference while ensuring all shipped code is valid for AMD64.
 Build a specific target with:
 
 ```powershell
-cmake --build --preset x64-debug --target WORD1
+cmake --build --preset x64-debug --target vintageword
 ```
 
 ## Contributing

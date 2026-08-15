@@ -14,7 +14,7 @@ extern "C" void OpusX64ReportSz(const char *message, const char *file,
 	_snprintf_s(g_last_report, sizeof(g_last_report), _TRUNCATE,
 			"%s (%s:%d)", message != nullptr ? message : "startup failure",
 			file != nullptr ? file : "unknown", line);
-	OutputDebugStringA("WORD1 x64: ");
+	OutputDebugStringA("VintageWord x64: ");
 	OutputDebugStringA(g_last_report);
 	OutputDebugStringA("\r\n");
 	}
@@ -34,7 +34,7 @@ extern "C" void OpusX64ReportWin32(const char *message, DWORD error,
 			message != nullptr ? message : "startup failure", error,
 			system_message[0] != '\0' ? system_message : "no system text",
 			file != nullptr ? file : "unknown", line);
-	OutputDebugStringA("WORD1 x64: ");
+	OutputDebugStringA("VintageWord x64: ");
 	OutputDebugStringA(g_last_report);
 	OutputDebugStringA("\r\n");
 	}
@@ -58,7 +58,7 @@ extern "C" void OpusX64Trace(const char *message)
 		}
 	char trace_path[MAX_PATH] = {};
 	_snprintf_s(trace_path, sizeof(trace_path), _TRUNCATE,
-			"%s\\build\\WORD1-port-trace.txt", module_path);
+			"%s\\build\\vintageword-port-trace.txt", module_path);
 	HANDLE file = CreateFileA(trace_path, FILE_APPEND_DATA, FILE_SHARE_READ,
 			nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 	if (file == INVALID_HANDLE_VALUE)

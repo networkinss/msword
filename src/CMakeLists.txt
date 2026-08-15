@@ -46,7 +46,8 @@ if(MSVC)
     add_compile_options(
         /wd4013 /wd4033 /wd4091 /wd4131 /wd4229
         /wd4244 /wd4267 /wd4477 /wd4996 /wd4200
-        /wd4018 /wd4101 /wd4133 /wd4146 /wd4311 /wd4312)
+        /wd4018 /wd4101 /wd4133 /wd4146 /wd4311 /wd4312
+        /wd4716 /wd4700 /wd4702 /wd4706 /wd4090 /wd4028 /wd4029)
 endif()
 
 if(NOT MSVC)
@@ -102,7 +103,7 @@ if(NOT MSVC)
     add_compile_definitions(_WIN32_WINNT=0x0A00 WINVER=0x0A00 NTDDI_VERSION=0x0A000000)
 endif()
 
-# Link the MSVC C/C++ runtime statically by default so WORD1.exe depends only
+# Link the MSVC C/C++ runtime statically by default so vintageword.exe depends only
 # on core OS DLLs and needs no Visual C++ Redistributable on the target machine.
 # Every target in this project is a static library or an executable (no DLLs),
 # so a single CRT choice applies consistently across the whole link graph.
@@ -125,7 +126,7 @@ set(MSWORD_BUILD_ROOT "${MSWORD_ROOT}/build")
 set(MSWORD_BIN_ROOT "${MSWORD_ROOT}/bin")
 # Reserved for the executable that will be linked from the original Opus
 # source graph. The migration bootstrap must not use this product name.
-set(MSWORD_PRODUCT_OUTPUT_NAME "WORD1" CACHE STRING
+set(MSWORD_PRODUCT_OUTPUT_NAME "vintageword" CACHE STRING
     "Filename stem for the original-source Word x64 executable")
 
 file(MAKE_DIRECTORY "${MSWORD_BUILD_ROOT}" "${MSWORD_BIN_ROOT}")
@@ -519,7 +520,7 @@ add_custom_command(
 )
 # GNU ld ignores the MSVC-only `#pragma comment(linker, "/export:...")`
 # directives in opuscmd_native.inc, but the command dispatch resolves every
-# command function with GetProcAddress against WORD1.exe -- so those exports
+# command function with GetProcAddress against vintageword.exe -- so those exports
 # are load-bearing. Re-express the same list as a .def file for the GNU
 # driver; see cmake/GenerateExportsDef.cmake.
 set(OPUS_GENERATED_EXPORTS_DEF "${OPUS_GENERATED_COMMAND_DIR}/word1_exports.def")
@@ -1044,23 +1045,23 @@ target_link_libraries(opus_original_engine PUBLIC opus_x64_runtime user32)
 # Product executable for Visual Studio's Startup Item list. The Unicode entry
 # adapter converts the modern process command line, then transfers control to
 # Microsoft's original Opus WinMain and its original window/message loop.
-add_executable(WORD1 WIN32
+add_executable(vintageword WIN32
     port/original/opus_original_startup_probe.cpp
     port/word1.rc
     port/winword.manifest
 )
-add_dependencies(WORD1 opus_original_engine)
-target_compile_features(WORD1 PRIVATE cxx_std_20)
-target_compile_definitions(WORD1 PRIVATE
+add_dependencies(vintageword opus_original_engine)
+target_compile_features(vintageword PRIVATE cxx_std_20)
+target_compile_definitions(vintageword PRIVATE
     WIN WIN23 CRLF NONATIVE OPUS_X64 NOMINMAX UNICODE _UNICODE
 )
-target_link_libraries(WORD1 PRIVATE opus_original_engine opus_x64_runtime user32 imm32 dbghelp)
+target_link_libraries(vintageword PRIVATE opus_original_engine opus_x64_runtime user32 imm32 dbghelp)
 if(MSVC)
-    target_compile_options(WORD1 PRIVATE /J /W3 /wd4005 /utf-8 /guard:cf /sdl)
-    target_link_options(WORD1 PRIVATE /DYNAMICBASE /HIGHENTROPYVA /NXCOMPAT /guard:cf /CETCOMPAT /MANIFEST:NO)
+    target_compile_options(vintageword PRIVATE /J /W3 /wd4005 /utf-8 /guard:cf /sdl)
+    target_link_options(vintageword PRIVATE /DYNAMICBASE /HIGHENTROPYVA /NXCOMPAT /guard:cf /CETCOMPAT /MANIFEST:NO)
 else()
-    target_compile_options(WORD1 PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS} ${OPUS_GNU_UTF8_OPTIONS})
-    target_link_options(WORD1 PRIVATE
+    target_compile_options(vintageword PRIVATE ${OPUS_GNU_ORIGINAL_C_OPTIONS} ${OPUS_GNU_UTF8_OPTIONS})
+    target_link_options(vintageword PRIVATE
         # The entry adapter defines wWinMain; -municode selects mingw's wide
         # CRT startup (wWinMainCRTStartup), which calls it. Without this the
         # default startup looks for the ANSI WinMain and the link fails.
@@ -1070,11 +1071,11 @@ else()
     # resolve (the .def replaces the MSVC-only /export: pragmas). Passed as an
     # explicit linker input: CMake's .def-as-source handling does not apply to
     # the clang + GNU-driver toolchain, which silently dropped it.
-    target_link_options(WORD1 PRIVATE "${OPUS_GENERATED_EXPORTS_DEF}")
-    set_property(TARGET WORD1 APPEND PROPERTY LINK_DEPENDS "${OPUS_GENERATED_EXPORTS_DEF}")
-    target_sources(WORD1 PRIVATE "${OPUS_GENERATED_EXPORTS_DEF}")
+    target_link_options(vintageword PRIVATE "${OPUS_GENERATED_EXPORTS_DEF}")
+    set_property(TARGET vintageword APPEND PROPERTY LINK_DEPENDS "${OPUS_GENERATED_EXPORTS_DEF}")
+    target_sources(vintageword PRIVATE "${OPUS_GENERATED_EXPORTS_DEF}")
 endif()
-set_target_properties(WORD1 PROPERTIES
+set_target_properties(vintageword PROPERTIES
     FOLDER "Original Opus x64/product"
     OUTPUT_NAME "${MSWORD_PRODUCT_OUTPUT_NAME}"
     VS_DEBUGGER_WORKING_DIRECTORY "${MSWORD_BIN_ROOT}"
@@ -1082,7 +1083,7 @@ set_target_properties(WORD1 PROPERTIES
 )
 
 # Diagnostic executable that force-links the same original startup graph as
-# WORD1 without product resources. It remains useful as an all-symbol gate.
+# vintageword without product resources. It remains useful as an all-symbol gate.
 add_executable(opus_original_startup_probe EXCLUDE_FROM_ALL WIN32
     port/original/opus_original_startup_probe.cpp
 )
@@ -1147,7 +1148,7 @@ target_compile_definitions(opus_x64_runtime_test PRIVATE
 target_include_directories(opus_x64_runtime_test PRIVATE ${OPUS_ORIGINAL_INCLUDE_DIRS})
 # opus_sdm_runtime.cpp (in opus_x64_runtime) calls OpusSaveDocumentAsDocx, which
 # is defined in Opus/rulerdrw.c and reaches into the engine (DocMother,
-# OpusExportCurrentDocumentPdf), so the runtime cannot link standalone. WORD1
+# OpusExportCurrentDocumentPdf), so the runtime cannot link standalone. vintageword
 # never noticed because it links both.
 target_link_libraries(opus_x64_runtime_test PRIVATE
     # imm32: opus_win95_chrome.cpp (in the engine) calls the IMM composition
@@ -1191,7 +1192,7 @@ endforeach()
 add_executable(opus_word1_ui_test
     port/original/opus_word1_ui_test.cpp
 )
-add_dependencies(opus_word1_ui_test WORD1)
+add_dependencies(opus_word1_ui_test vintageword)
 target_compile_features(opus_word1_ui_test PRIVATE cxx_std_20)
 target_compile_definitions(opus_word1_ui_test PRIVATE NOMINMAX UNICODE _UNICODE)
 target_link_libraries(opus_word1_ui_test PRIVATE user32 gdi32)
@@ -1223,44 +1224,44 @@ add_test(NAME opus_original_sttb_test COMMAND $<TARGET_FILE:opus_original_sttb_t
 add_test(NAME opus_original_plc_test COMMAND $<TARGET_FILE:opus_original_plc_test>)
 add_test(NAME opus_sdm_cab_test COMMAND $<TARGET_FILE:opus_sdm_cab_test>)
 add_test(NAME opus_original_command_test COMMAND $<TARGET_FILE:opus_original_command_test>)
-add_test(NAME word1_port_smoke_test COMMAND $<TARGET_FILE:WORD1> --self-test)
+add_test(NAME word1_port_smoke_test COMMAND $<TARGET_FILE:vintageword> --self-test)
 add_test(NAME opus_word1_ui_test
-    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:WORD1>
+    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:vintageword>
 )
 set_tests_properties(opus_word1_ui_test PROPERTIES TIMEOUT 20)
 add_test(NAME opus_word1_clipboard_shortcut_test
-    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:WORD1> --clipboard
+    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:vintageword> --clipboard
 )
 set_tests_properties(opus_word1_clipboard_shortcut_test PROPERTIES TIMEOUT 20)
 add_test(NAME opus_word1_unicode_test
-    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:WORD1> --unicode
+    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:vintageword> --unicode
 )
 set_tests_properties(opus_word1_unicode_test PROPERTIES TIMEOUT 20)
 add_test(NAME opus_word1_typing_test
-    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:WORD1> --typing
+    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:vintageword> --typing
 )
 set_tests_properties(opus_word1_typing_test PROPERTIES TIMEOUT 20)
 add_test(NAME opus_word1_interaction_test
-    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:WORD1> --interaction
+    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:vintageword> --interaction
 )
 set_tests_properties(opus_word1_interaction_test PROPERTIES TIMEOUT 25)
 add_test(NAME opus_word1_selection_test
-    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:WORD1> --selection
+    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:vintageword> --selection
 )
 set_tests_properties(opus_word1_selection_test PROPERTIES TIMEOUT 20)
 add_test(NAME opus_word1_font_typing_test
-    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:WORD1> --font-typing
+    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:vintageword> --font-typing
 )
 set_tests_properties(opus_word1_font_typing_test PROPERTIES TIMEOUT 20)
 add_test(NAME opus_word1_about_test
-    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:WORD1> --about
+    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:vintageword> --about
 )
 set_tests_properties(opus_word1_about_test PROPERTIES TIMEOUT 20)
 add_test(NAME opus_word1_save_as_test
-    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:WORD1> --save-as
+    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:vintageword> --save-as
 )
 set_tests_properties(opus_word1_save_as_test PROPERTIES TIMEOUT 20)
 add_test(NAME opus_word1_pdf_export_test
-    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:WORD1> --pdf-export
+    COMMAND $<TARGET_FILE:opus_word1_ui_test> $<TARGET_FILE:vintageword> --pdf-export
 )
 set_tests_properties(opus_word1_pdf_export_test PROPERTIES TIMEOUT 25)

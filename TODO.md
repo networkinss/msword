@@ -321,7 +321,7 @@ Worth recording so these aren't re-investigated:
 4. Re-sweep on Linux after each source fix; it is free there. Harness used this
    session (case-alias symlink farm + generated `opus_windows_sdk.h`) is
    described in the git history of this file rather than kept in-tree.
-5. Once `WORD1.exe` links, run the existing ctest suite on `m93p` and diff
+5. Once `vintageword.exe` links, run the existing ctest suite on `m93p` and diff
    behaviour against an MSVC build before trusting the mingw output - the
    unsigned-char question in particular deserves a targeted test on the
    international-character routines.

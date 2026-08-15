@@ -39,7 +39,9 @@ jobs:
         run: |
           # Quote the MSBuild switches: PowerShell otherwise splits them at the
           # colon into "-verbosity: quiet", which MSBuild rejects (MSB1016).
-          cmake --build --preset ${{ matrix.preset }} -- '-verbosity:quiet' '-consoleLoggerParameters:NoSummary' 2>&1 |
+          # minimal (not quiet) keeps cl.exe's per-file echo, which is what
+          # identifies the failing translation unit.
+          cmake --build --preset ${{ matrix.preset }} -- '-verbosity:minimal' '-consoleLoggerParameters:NoSummary' 2>&1 |
             Tee-Object -FilePath ../build-msvc.log
           exit $LASTEXITCODE
 
@@ -68,10 +70,10 @@ jobs:
             -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           $dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe" |
             Sort-Object FullName | Select-Object -Last 1
-          $deps = & $dumpbin.FullName /dependents ..\bin\WORD1.exe
+          $deps = & $dumpbin.FullName /dependents ..\bin\vintageword.exe
           $deps
           if ($deps -match 'vcruntime|msvcp\d+\.dll|ucrtbase|api-ms-win-crt') {
-            throw "WORD1.exe (${{ matrix.preset }}) still imports the dynamic MSVC runtime."
+            throw "vintageword.exe (${{ matrix.preset }}) still imports the dynamic MSVC runtime."
           }
 
       - name: Test (headless)
@@ -85,13 +87,13 @@ jobs:
           $config = if ('${{ matrix.preset }}' -eq 'x64-debug') { 'Debug' } else { 'Release' }
           ctest --test-dir ..\out -C $config --output-on-failure -R '^opus_word1_'
 
-      - name: Upload WORD1.exe
+      - name: Upload vintageword.exe
         uses: actions/upload-artifact@v4
         with:
-          name: WORD1-msvc-${{ matrix.preset }}
+          name: vintageword-msvc-${{ matrix.preset }}
           path: |
-            bin/WORD1.exe
-            build/pdb/**/WORD1.pdb
+            bin/vintageword.exe
+            build/pdb/**/vintageword.pdb
           if-no-files-found: error
 
   # --- clang / mingw-w64, x64 ------------------------------------------------
@@ -147,11 +149,11 @@ jobs:
         continue-on-error: true
         run: ctest --test-dir ../out-clang-mingw -C Debug --output-on-failure -R '^opus_word1_'
 
-      - name: Upload WORD1.exe
+      - name: Upload vintageword.exe
         uses: actions/upload-artifact@v4
         with:
-          name: WORD1-clang-x64
-          path: bin/WORD1.exe
+          name: vintageword-clang-x64
+          path: bin/vintageword.exe
           if-no-files-found: error
 
   # --- clang / mingw-w64, ARM64 (native) -------------------------------------
@@ -214,9 +216,9 @@ jobs:
         continue-on-error: true
         run: ctest --test-dir ../out-clang-mingw -C Debug --output-on-failure -R '^opus_word1_'
 
-      - name: Upload WORD1-arm64.exe
+      - name: Upload vintageword-arm64.exe
         uses: actions/upload-artifact@v4
         with:
-          name: WORD1-clang-arm64
-          path: bin/WORD1.exe
+          name: vintageword-clang-arm64
+          path: bin/vintageword.exe
           if-no-files-found: error

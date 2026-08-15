@@ -653,7 +653,7 @@ int wmain(const int argument_count, wchar_t** arguments) {
         DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     if (argument_count < 2 || argument_count > 4) {
         std::cerr <<
-            "usage: opus_word1_ui_test WORD1.exe "
+            "usage: opus_word1_ui_test vintageword.exe "
             "[--typing|--interaction|--selection|--caret|--formatting|--color|"
             "--font-typing|--unicode|--clipboard|--about|--save-as|--pdf-export|"
             "--docx-open FILE|--docx-format-open FILE|"
@@ -798,9 +798,9 @@ int wmain(const int argument_count, wchar_t** arguments) {
 
     const HWND main_window = wait_for_window(
         process.hProcess, process.dwProcessId, nullptr,
-        L"Microsoft Word - Document1", 8000);
+        L"VintageWord - Document1", 8000);
     if (main_window == nullptr) {
-        return fail(process, 3, "WORD1 main window did not appear");
+        return fail(process, 3, "VintageWord main window did not appear");
     }
     if (pdf_export_mode) {
         const HWND pane = find_descendant_by_class(main_window, L"OpusWwd");
@@ -1752,7 +1752,7 @@ int wmain(const int argument_count, wchar_t** arguments) {
         Sleep(1500);
         if (!window_is_responsive(process.hProcess, main_window)) {
             return fail(process, 46,
-                        "centered alignment crashed or hung WORD1");
+                        "centered alignment crashed or hung VintageWord");
         }
         TerminateProcess(process.hProcess, 0);
         WaitForSingleObject(process.hProcess, 2000);
@@ -2008,7 +2008,7 @@ int wmain(const int argument_count, wchar_t** arguments) {
         }
         PostMessageW(main_window, WM_SYSCOMMAND, SC_RESTORE, 0);
         if (!wait_for_zoom_state(process.hProcess, main_window, false, 3000)) {
-            return fail(process, 19, "WORD1 did not restore from maximize");
+            return fail(process, 19, "VintageWord did not restore from maximize");
         }
 
         const HWND pane = find_descendant_by_class(main_window, L"OpusWwd");
@@ -2022,7 +2022,7 @@ int wmain(const int argument_count, wchar_t** arguments) {
         POINT client_origin{};
         if (!ClientToScreen(main_window, &client_origin)) {
             return fail(process, 30,
-                        "could not locate the WORD1 nonclient area");
+                        "could not locate the VintageWord nonclient area");
         }
         POINT caption_point{(window_before_move.left + window_before_move.right) /
                                 2,
@@ -2038,7 +2038,7 @@ int wmain(const int argument_count, wchar_t** arguments) {
             !SetCursorPos(caption_point.x, caption_point.y) ||
             !send_mouse_button(MOUSEEVENTF_LEFTDOWN)) {
             return fail(process, 30,
-                        "WORD1 did not expose a draggable caption");
+                        "VintageWord did not expose a draggable caption");
         }
         Sleep(100);
         SetCursorPos(caption_point.x + 40, caption_point.y + 24);
@@ -2050,7 +2050,7 @@ int wmain(const int argument_count, wchar_t** arguments) {
             (window_before_move.left == window_after_move.left &&
              window_before_move.top == window_after_move.top)) {
             return fail(process, 32,
-                        "dragging the caption did not move the WORD1 window");
+                        "dragging the caption did not move the VintageWord window");
         }
 
         if (!PostMessageW(main_window, WM_SYSCOMMAND, SC_KEYMENU, L'f') ||
@@ -2090,7 +2090,7 @@ int wmain(const int argument_count, wchar_t** arguments) {
             SendMessageW(pane, kWmOpusX64QuerySelection, 7, 0);
         const std::size_t dark_pixels_before = count_dark_client_pixels(pane);
         if (!send_physical_text(physical_text)) {
-            return fail(process, 25, "SendInput could not type into WORD1");
+            return fail(process, 25, "SendInput could not type into VintageWord");
         }
         // SendInput returns after placing events in the GUI input queue.  Give
         // the original insert loop time to drain the complete long sequence
@@ -2406,7 +2406,7 @@ int wmain(const int argument_count, wchar_t** arguments) {
         return fail(process, 8, "File New dialog did not finish");
     }
     if (wait_for_window(process.hProcess, process.dwProcessId, nullptr,
-                        L"Microsoft Word - Document2", 5000) == nullptr) {
+                        L"VintageWord - Document2", 5000) == nullptr) {
         return fail(process, 9,
                     "original File New action did not create Document2");
     }
