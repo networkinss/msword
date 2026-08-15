@@ -26,7 +26,7 @@ if(MSVC)
     # The MSVC counterpart of the clang suppressions below: these legacy-C
     # diagnostics fire tens of thousands of times across ~400 K&R-era
     # translation units, which truncates CI logs before the real errors are
-    # reached. Suppressed for C only -- port-written C++ keeps full warnings.
+    # reached.
     #   C4013 undefined function, assuming extern returning int
     #   C4033 function must return a value
     #   C4091 'extern' ignored on left of type
@@ -35,17 +35,18 @@ if(MSVC)
     #   C4244/C4267 integral/size_t narrowing conversions
     #   C4477 printf format vs argument width
     #   C4996 deprecated CRT names
+    #   C4018 signed/unsigned compare, C4101 unused local, C4133 incompatible
+    #   pointer types, C4146 unary minus on unsigned, C4311/C4312 pointer
+    #   truncation warnings on the 16-bit-era handle idioms
+    # NOT $<COMPILE_LANGUAGE:...> genexes: the Visual Studio generator carries
+    # one flag set per project rather than per file, so those evaluate
+    # unreliably there (they previously spilled C++ semantics onto the C
+    # sources and produced a C4430 flood). Plain flags apply predictably.
+    # /wd only silences these specific warnings; errors are unaffected.
     add_compile_options(
-        $<$<COMPILE_LANGUAGE:C>:/wd4013>
-        $<$<COMPILE_LANGUAGE:C>:/wd4033>
-        $<$<COMPILE_LANGUAGE:C>:/wd4091>
-        $<$<COMPILE_LANGUAGE:C>:/wd4131>
-        $<$<COMPILE_LANGUAGE:C>:/wd4229>
-        $<$<COMPILE_LANGUAGE:C>:/wd4244>
-        $<$<COMPILE_LANGUAGE:C>:/wd4267>
-        $<$<COMPILE_LANGUAGE:C>:/wd4477>
-        $<$<COMPILE_LANGUAGE:C>:/wd4996>
-        $<$<COMPILE_LANGUAGE:C>:/wd4200>)
+        /wd4013 /wd4033 /wd4091 /wd4131 /wd4229
+        /wd4244 /wd4267 /wd4477 /wd4996 /wd4200
+        /wd4018 /wd4101 /wd4133 /wd4146 /wd4311 /wd4312)
 endif()
 
 if(NOT MSVC)

@@ -231,6 +231,24 @@ LONG WINAPI WriteCrashStack(EXCEPTION_POINTERS* exception) {
     WriteCrashText(file, line_text);
 #endif
 
+    /* The unwinder below is architecture-neutral apart from the three
+       control registers, which CONTEXT names differently per architecture
+       (x64: Rip/Rsp/Rbp, ARM64: Pc/Sp/Fp). Accessors keep one copy of the
+       walking logic instead of duplicating it per architecture. */
+#if defined(_M_ARM64) || defined(__aarch64__)
+    const auto context_pc = [](const CONTEXT& c) { return c.Pc; };
+    const auto context_sp = [](const CONTEXT& c) { return c.Sp; };
+    const auto context_fp = [](const CONTEXT& c) { return c.Fp; };
+    const auto set_context_pc = [](CONTEXT& c, DWORD64 v) { c.Pc = v; };
+    const auto set_context_sp = [](CONTEXT& c, DWORD64 v) { c.Sp = v; };
+#else
+    const auto context_pc = [](const CONTEXT& c) { return c.Rip; };
+    const auto context_sp = [](const CONTEXT& c) { return c.Rsp; };
+    const auto context_fp = [](const CONTEXT& c) { return c.Rbp; };
+    const auto set_context_pc = [](CONTEXT& c, DWORD64 v) { c.Rip = v; };
+    const auto set_context_sp = [](CONTEXT& c, DWORD64 v) { c.Rsp = v; };
+#endif
+
     const auto module_base = reinterpret_cast<std::uintptr_t>(
         GetModuleHandleW(nullptr));
     const auto* dos_header = reinterpret_cast<const IMAGE_DOS_HEADER*>(
@@ -244,18 +262,19 @@ LONG WINAPI WriteCrashStack(EXCEPTION_POINTERS* exception) {
     GetCurrentThreadStackLimits(&stack_low, &stack_high);
 
     CONTEXT unwind_context = *exception->ContextRecord;
-    for (unsigned index = 0; index < 64 && unwind_context.Rip != 0; ++index) {
-        const DWORD64 control_pc = unwind_context.Rip;
+    for (unsigned index = 0; index < 64 && context_pc(unwind_context) != 0;
+         ++index) {
+        const DWORD64 control_pc = context_pc(unwind_context);
         if (control_pc >= module_base && control_pc < module_limit) {
             std::snprintf(line_text, sizeof(line_text),
                           "unwind #%u WORD1+0x%llX rsp=0x%llX\r\n", index,
                           static_cast<unsigned long long>(control_pc - module_base),
-                          static_cast<unsigned long long>(unwind_context.Rsp));
+                          static_cast<unsigned long long>(context_sp(unwind_context)));
         } else {
             std::snprintf(line_text, sizeof(line_text),
                           "unwind #%u 0x%016llX rsp=0x%llX\r\n", index,
                           static_cast<unsigned long long>(control_pc),
-                          static_cast<unsigned long long>(unwind_context.Rsp));
+                          static_cast<unsigned long long>(context_sp(unwind_context)));
         }
         WriteCrashText(file, line_text);
 
@@ -269,17 +288,19 @@ LONG WINAPI WriteCrashStack(EXCEPTION_POINTERS* exception) {
                              &unwind_context, &handler_data,
                              &establisher_frame, nullptr);
         } else {
-            if (unwind_context.Rsp < stack_low ||
-                unwind_context.Rsp + sizeof(DWORD64) > stack_high) {
+            if (context_sp(unwind_context) < stack_low ||
+                context_sp(unwind_context) + sizeof(DWORD64) > stack_high) {
                 break;
             }
-            unwind_context.Rip =
-                *reinterpret_cast<const DWORD64*>(unwind_context.Rsp);
-            unwind_context.Rsp += sizeof(DWORD64);
+            set_context_pc(unwind_context,
+                *reinterpret_cast<const DWORD64*>(context_sp(unwind_context)));
+            set_context_sp(unwind_context,
+                context_sp(unwind_context) + sizeof(DWORD64));
         }
     }
 
-    const std::uintptr_t stack_begin = exception->ContextRecord->Rsp;
+    const std::uintptr_t stack_begin =
+        static_cast<std::uintptr_t>(context_sp(*exception->ContextRecord));
     const std::uintptr_t stack_end = (std::min)(
         static_cast<std::uintptr_t>(stack_high), stack_begin + 8192u);
     for (std::uintptr_t cursor = stack_begin;
@@ -301,11 +322,11 @@ LONG WINAPI WriteCrashStack(EXCEPTION_POINTERS* exception) {
     if (SymInitialize(process, nullptr, TRUE)) {
         CONTEXT context = *exception->ContextRecord;
         STACKFRAME64 frame = {};
-        frame.AddrPC.Offset = context.Rip;
+        frame.AddrPC.Offset = context_pc(context);
         frame.AddrPC.Mode = AddrModeFlat;
-        frame.AddrStack.Offset = context.Rsp;
+        frame.AddrStack.Offset = context_sp(context);
         frame.AddrStack.Mode = AddrModeFlat;
-        frame.AddrFrame.Offset = context.Rbp;
+        frame.AddrFrame.Offset = context_fp(context);
         frame.AddrFrame.Mode = AddrModeFlat;
 
         for (unsigned index = 0; index < 64 && frame.AddrPC.Offset != 0;

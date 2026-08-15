@@ -46,9 +46,12 @@ jobs:
       - name: Error summary
         if: failure()
         run: |
-          Write-Host "=== error lines ==="
-          Select-String -Path ../build-msvc.log -Pattern 'error [A-Z]+[0-9]+|fatal error' |
-            Select-Object -First 60 | ForEach-Object { $_.Line }
+          Write-Host "=== error lines (with 4 lines of context, to show the failing TU) ==="
+          Select-String -Path ../build-msvc.log -Pattern 'error [A-Z]+[0-9]+|fatal error' -Context 4,0 |
+            Select-Object -First 12 | ForEach-Object { $_ }
+          Write-Host "=== distinct error codes ==="
+          Select-String -Path ../build-msvc.log -Pattern 'error ([A-Z]+[0-9]+)' |
+            ForEach-Object { $_.Matches.Groups[1].Value } | Sort-Object -Unique
 
       - name: Upload build log
         if: failure()
