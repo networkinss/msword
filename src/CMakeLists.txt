@@ -45,22 +45,27 @@ endif()
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     # clang 15/16 promoted several legacy-C diagnostics from warning to error.
     # This is 1990 K&R-era source: implicit int, implicit declarations, missing
-    # returns and int<->pointer conversion are pervasive and intentional. GCC
-    # still warns rather than errors on all of these, which is why a clang sweep
-    # fails on far more files than a GCC one until they are demoted. Demoted,
-    # not silenced -- they remain visible as warnings.
+    # returns and int<->pointer conversion are pervasive and intentional, so
+    # these diagnostics carry no signal here -- and at ~400 TUs they emit tens
+    # of thousands of lines, enough that CI truncates the log before the real
+    # errors appear. Fully suppressed for C, not merely demoted. Port-written
+    # C++ keeps every warning (the flags are C-only): there a missing return
+    # is undefined behaviour, not a K&R idiom.
     #
     # Applied project-wide rather than through OPUS_GNU_ORIGINAL_C_OPTIONS: the
     # offending declarations are in Opus/wordtech/word.h, so every target that
     # includes it needs them, including the few whose if(MSVC) blocks carry no
-    # GNU else() branch. Restricted to C -- in C++ a missing return is undefined
-    # behaviour rather than a K&R idiom, so that diagnostic must stay fatal.
+    # GNU else() branch.
     add_compile_options(
-        $<$<COMPILE_LANGUAGE:C>:-Wno-error=return-type>
-        $<$<COMPILE_LANGUAGE:C>:-Wno-error=int-conversion>
-        $<$<COMPILE_LANGUAGE:C>:-Wno-error=implicit-function-declaration>
-        $<$<COMPILE_LANGUAGE:C>:-Wno-error=implicit-int>
-        $<$<COMPILE_LANGUAGE:C>:-Wno-error=incompatible-pointer-types>)
+        $<$<COMPILE_LANGUAGE:C>:-Wno-return-type>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-int-conversion>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-implicit-function-declaration>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-implicit-int>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-incompatible-pointer-types>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-deprecated-non-prototype>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-macro-redefined>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-pointer-sign>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-int-to-void-pointer-cast>)
 endif()
 set(OPUS_GNU_UTF8_OPTIONS -finput-charset=UTF-8 -fexec-charset=UTF-8)
 if(NOT MSVC)
