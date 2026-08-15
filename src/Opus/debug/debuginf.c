@@ -2,6 +2,7 @@
 #ifdef DEBUG
 
 #include "word.h"
+#include "opus_lvalue_cast.h"
 DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #include "heap.h"
 #include "props.h"
@@ -1719,7 +1720,7 @@ CMB *pcmb;
 			CommSz("\n\r");
 			pch = rgch;
 			}
-		(char *)pchr += CbFromChrm(chrm);
+		OpusAdvPp(char, pchr, CbFromChrm(chrm));
 		}
 	return cmdOK;
 }

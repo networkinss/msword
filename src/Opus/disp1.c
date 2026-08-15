@@ -1,6 +1,7 @@
 /* D I S P 1 . C */
 #define SCREENDEFS
 #include "word.h"
+#include "opus_lvalue_cast.h"
 DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #include "heap.h"
 #include "disp.h"
@@ -818,9 +819,9 @@ int		dxpToXw, ywLine;
 						&rcErase, fErased, eto);
 				ich++;
 				}
-			(char *) pchr = (char *)*vhgrpchr + bchrCur;
-			(char *) pchp = (char *)*vhgrpchr + bchpCur;
-			((struct CHRT *)pchr)++;
+			OpusSetPp(char, pchr, (char *)*vhgrpchr + bchrCur);
+			OpusSetPp(char, pchp, (char *)*vhgrpchr + bchpCur);
+			OpusAdvPp(struct CHRT, pchr, 1);
 			}
 		else  if (chrm == chrmChp)
 			{
@@ -872,7 +873,7 @@ int		dxpToXw, ywLine;
 			{
 /* real cp can be calculated as vfli.cpMin + ich + dcpVanish */
 			dcpVanish += ((struct CHRV *)pchr)->dcp;
-			(char *)pchr += cbCHRV;
+			OpusAdvPp(char, pchr, cbCHRV);
 			}
 		else  if (chrm == chrmDisplayField)
 			{
@@ -924,7 +925,7 @@ int		dxpToXw, ywLine;
 			pchp = (char *)*vhgrpchr + bchpCur;
 			dcpVanish += ((struct CHRDF *)pchr)->dcp -1;
 			ptPen.xp = xpNew;
-			(char *) pchr += cbCHRDF;
+			OpusAdvPp(char, pchr, cbCHRDF);
 			}
 		else  if (chrm == chrmFormula)
 			{
@@ -979,7 +980,7 @@ int		dxpToXw, ywLine;
 			ptPen.xp = xpNew;
 			ptPen.yp = ypNew;
 			fNoSkip = vfli.fPrint;
-			(char *) pchr += cbCHRF;
+			OpusAdvPp(char, pchr, cbCHRF);
 			}
 		else  if (chrm == chrmFormatGroup)
 			{
@@ -994,7 +995,7 @@ int		dxpToXw, ywLine;
 				}
 			/* note that rcOpaque and rcErase will no
 				longer change (rcErase not used) */
-			(char *) pchr += cbCHRFG;
+			OpusAdvPp(char, pchr, cbCHRFG);
 			}
 		else  /*if (chrm == chrmEnd)*/
 			
@@ -1065,8 +1066,8 @@ LDacNop:
 						bchrCur = (char *) pchr - (char *)*vhgrpchr;
 						bchpCur = (char *) pchp - (char *)*vhgrpchr;
 						EndUL(&uls, &rcwClip);
-						(char *) pchr = (char *)*vhgrpchr + bchrCur;
-						(char *) pchp = (char *)*vhgrpchr + bchpCur;
+						OpusSetPp(char, pchr, (char *)*vhgrpchr + bchrCur);
+						OpusSetPp(char, pchp, (char *)*vhgrpchr + bchpCur);
 						}
 
 				if (!fErased && !fPrvwPrint)
@@ -1092,8 +1093,8 @@ LDacNop:
 				bchrCur = (char *) pchr - (char *)*vhgrpchr;
 				bchpCur = (char *) pchp - (char *)*vhgrpchr;
 				ShowSpec(ww, ich, &ptPen, yp, pchp, &uls);
-				(char *) pchr = (char *)*vhgrpchr + bchrCur;
-				(char *) pchp = (char *)*vhgrpchr + bchpCur;
+				OpusSetPp(char, pchr, (char *)*vhgrpchr + bchrCur);
+				OpusSetPp(char, pchp, (char *)*vhgrpchr + bchpCur);
 
 				if (vfli.grpfvisi.fvisiShowAll && 
 						(chSpec == chFootnote 
@@ -1282,8 +1283,8 @@ LRealExtTextOut:
 #endif
 	 					}
                     vrf.fInExternalCall = fFalse;
-					(char *) pchr = (char *)*vhgrpchr + bchrCur;
-					(char *) pchp = (char *)*vhgrpchr + bchpCur;
+					OpusSetPp(char, pchr, (char *)*vhgrpchr + bchrCur);
+					OpusSetPp(char, pchp, (char *)*vhgrpchr + bchpCur);
 
 					if (!fErased && !fPrvwPrint)
 						rcOpaque.xpLeft = ptPen.xp;
@@ -1755,7 +1756,7 @@ struct RC *prcwClip;
 		else  if (chrm == chrmEnd)
 			break;
 		bchrCur += CbFromChrm(chrm);
-		(char *)pchr += CbFromChrm(chrm);
+		OpusAdvPp(char, pchr, CbFromChrm(chrm));
 		}
 
 /* draw CRJ symbol if needed */

@@ -226,10 +226,11 @@ windows reopened and correctly placed, as soon as CBT is finished.    **/
 };
 
 #ifdef NOABOUT
-BOOL FDlgAbout(dlm, tmc, wNew, wOld, wParam)
-DLM dlm;
-TMC tmc;
-WORD wOld, wNew, wParam;
+/* Prototype form: port/original/about.sdm declares this with a full prototype
+   and takes its address as a PFN_DIALOG. A K&R definition's parameters undergo
+   default promotion to int, which is incompatible with that prototype under
+   C99+. Parameter order and types are unchanged. */
+BOOL FDlgAbout(DLM dlm, TMC tmc, WORD wNew, WORD wOld, WORD wParam)
 {
 	/* make ESC close the dialog, as ok does */
 	if (dlm == dlmKey)

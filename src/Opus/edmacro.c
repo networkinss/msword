@@ -1745,7 +1745,8 @@ int imei;
 {
 	extern int ElaDebug();
 	extern int GetInfoElx();
-	extern ELI ** HeliNew();
+	/* el.h already declares HeliNew with a full prototype; the local
+	   unprototyped redeclaration conflicts with it under C99+. */
 
 	RERR rerr;
 	MEI * pmei;

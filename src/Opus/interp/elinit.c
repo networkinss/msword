@@ -31,7 +31,8 @@ BOOL fElActive = FALSE;
 #define LibCur()	(Global(libBufStart) + Global(ibBufCur))
 
 
-VOID RtError();
+/* el.h already declares RtError(RERR); an unprototyped redeclaration
+   conflicts with it under C99+. */
 VOID StopHeli();
 VOID CleanupEl();
 

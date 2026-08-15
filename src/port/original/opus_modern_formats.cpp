@@ -26,6 +26,12 @@
 #include <unordered_map>
 #include <vector>
 
+// NOTE: no strnlen_s shim here. TODO.md previously listed one as required for
+// mingw-w64, but that was never verified and is wrong: mingw-w64 declares
+// strnlen_s in <sec_api/string_s.h>, which <string.h> pulls in, so any local
+// definition collides with it ("static declaration follows non-static").
+// MSVC supplies it as part of the secure CRT.
+
 using Microsoft::WRL::ComPtr;
 
 namespace {

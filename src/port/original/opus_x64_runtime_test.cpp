@@ -4,6 +4,9 @@
 
 #include <array>
 #include <cstddef>
+// std::uint16_t / std::uint32_t / std::uintptr_t are used below. MSVC's STL
+// pulls <cstdint> in transitively; libstdc++ does not.
+#include <cstdint>
 #include <cstring>
 
 extern "C" struct ITR vitr = {};

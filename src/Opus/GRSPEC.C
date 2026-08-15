@@ -1055,13 +1055,21 @@ int     rgco[];
 		}
 
 	/* initialize nearest color to first color                      */
+#ifdef OPUS_X64
+	wdistNear = DistFromCoCo(co, OpusCoFromValue(*rgco));
+#else
 	wdistNear = DistFromCoCo(co, *rgco);
+#endif
 	icoNear = 0;
 
 	for (pco=&rgco[icoMaxM1],icoCur=icoMaxM1; icoCur > 0; --icoCur,--pco) 
 		{
 		/* find nearest color                                   */
-		if (wdistNear > (wdistCur = DistFromCoCo(co, *pco))) 
+#ifdef OPUS_X64
+		if (wdistNear > (wdistCur = DistFromCoCo(co, OpusCoFromValue(*pco))))
+#else
+		if (wdistNear > (wdistCur = DistFromCoCo(co, *pco)))
+#endif
 			{
 			wdistNear = wdistCur;
 			icoNear = icoCur;

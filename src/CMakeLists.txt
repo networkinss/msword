@@ -22,6 +22,46 @@ endif()
 # does not produce a diagnostic -- it silently changes comparisons of high-bit
 # characters.
 set(OPUS_GNU_ORIGINAL_C_OPTIONS -funsigned-char)
+if(NOT MSVC)
+    # -funsigned-char is the /J counterpart and must hold for EVERY C
+    # translation unit, not just those whose target picks up
+    # OPUS_GNU_ORIGINAL_C_OPTIONS: a unit compiled with signed char that links
+    # against unsigned-char code disagrees silently about high-bit character
+    # comparisons. opus_original_command_test and opus_dibapp_tool have no GNU
+    # else() branch, and opus_original_command_test is missing /J on the MSVC
+    # side too -- see TODO.md.
+    add_compile_options($<$<COMPILE_LANGUAGE:C>:-funsigned-char>)
+
+    # Microsoft anonymous structs/unions: the original headers embed a *tagged*
+    # nested struct with no member name and rely on its fields being promoted
+    # into the parent, e.g. `struct PAP { struct PAPS { ... }; ... }` in
+    # Opus/wordtech/props.h. ISO C only permits *untagged* anonymous members, so
+    # without this every access to pap.dxaLeft / pap.stc fails to compile.
+    # Applies to C++ too -- the port's translated-assembly units include the
+    # same headers. (Unrelated to the flexible-array-in-union issue, which
+    # -fms-extensions genuinely does not fix; see TODO.md.)
+    add_compile_options(-fms-extensions)
+endif()
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    # clang 15/16 promoted several legacy-C diagnostics from warning to error.
+    # This is 1990 K&R-era source: implicit int, implicit declarations, missing
+    # returns and int<->pointer conversion are pervasive and intentional. GCC
+    # still warns rather than errors on all of these, which is why a clang sweep
+    # fails on far more files than a GCC one until they are demoted. Demoted,
+    # not silenced -- they remain visible as warnings.
+    #
+    # Applied project-wide rather than through OPUS_GNU_ORIGINAL_C_OPTIONS: the
+    # offending declarations are in Opus/wordtech/word.h, so every target that
+    # includes it needs them, including the few whose if(MSVC) blocks carry no
+    # GNU else() branch. Restricted to C -- in C++ a missing return is undefined
+    # behaviour rather than a K&R idiom, so that diagnostic must stay fatal.
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:C>:-Wno-error=return-type>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-error=int-conversion>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-error=implicit-function-declaration>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-error=implicit-int>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-error=incompatible-pointer-types>)
+endif()
 set(OPUS_GNU_UTF8_OPTIONS -finput-charset=UTF-8 -fexec-charset=UTF-8)
 if(NOT MSVC)
     # Win32 API surface level. MSVC picks this up from the Windows SDK
@@ -95,10 +135,34 @@ set_target_properties(legacy_sources PROPERTIES FOLDER "Legacy reference (not co
 # original Opus tree; compatibility code supplies platform services only.
 if(MSVC)
     # CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION is only set by the Visual Studio
-    # generators, so this branch must stay MSVC-only.
+    # generators. clang-cl also sets MSVC, but is normally driven by Ninja, where
+    # that variable is empty -- so fall back to picking the newest SDK on disk
+    # rather than building an "Include//um/Windows.h" path that cannot exist.
     set(OPUS_SDK_ROOT "$ENV{ProgramFiles\(x86\)}/Windows Kits/10")
+    if(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION)
+        set(OPUS_SDK_VERSION "${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
+    else()
+        file(GLOB OPUS_SDK_CANDIDATES
+            LIST_DIRECTORIES true
+            RELATIVE "${OPUS_SDK_ROOT}/Include"
+            "${OPUS_SDK_ROOT}/Include/*")
+        set(OPUS_SDK_VERSION "")
+        foreach(candidate IN LISTS OPUS_SDK_CANDIDATES)
+            if(EXISTS "${OPUS_SDK_ROOT}/Include/${candidate}/um/Windows.h")
+                if(NOT OPUS_SDK_VERSION OR candidate VERSION_GREATER OPUS_SDK_VERSION)
+                    set(OPUS_SDK_VERSION "${candidate}")
+                endif()
+            endif()
+        endforeach()
+        if(NOT OPUS_SDK_VERSION)
+            message(FATAL_ERROR
+                "No Windows SDK with um/Windows.h found under "
+                "${OPUS_SDK_ROOT}/Include. Install the Windows 10/11 SDK.")
+        endif()
+        message(STATUS "Using Windows SDK ${OPUS_SDK_VERSION} (auto-detected)")
+    endif()
     set(OPUS_WINDOWS_SDK_HEADER
-        "${OPUS_SDK_ROOT}/Include/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/um/Windows.h")
+        "${OPUS_SDK_ROOT}/Include/${OPUS_SDK_VERSION}/um/Windows.h")
 else()
     # mingw-w64 ships its own Win32 headers. Resolve the real windows.h out of
     # the compiler's implicit include path: port/original/windows.h deliberately
@@ -152,6 +216,9 @@ add_executable(opus_mkcmd_tool EXCLUDE_FROM_ALL
 target_compile_definitions(opus_mkcmd_tool PRIVATE OPUS_X64_TOOL)
 target_include_directories(opus_mkcmd_tool PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/OpusEtAl/tools/src"
+    # opus_lvalue_cast.h -- mkcmd.c uses the cast-as-lvalue extension, which
+    # only MSVC still accepts.
+    "${CMAKE_CURRENT_SOURCE_DIR}/port/original"
 )
 if(MSVC)
     target_compile_options(opus_mkcmd_tool PRIVATE /J /W3 /wd4996)
@@ -1010,7 +1077,12 @@ target_compile_definitions(opus_x64_runtime_test PRIVATE
     WIN WIN23 CRLF NONATIVE OPUS_X64 NOMINMAX
 )
 target_include_directories(opus_x64_runtime_test PRIVATE ${OPUS_ORIGINAL_INCLUDE_DIRS})
-target_link_libraries(opus_x64_runtime_test PRIVATE opus_x64_runtime user32 gdi32)
+# opus_sdm_runtime.cpp (in opus_x64_runtime) calls OpusSaveDocumentAsDocx, which
+# is defined in Opus/rulerdrw.c and reaches into the engine (DocMother,
+# OpusExportCurrentDocumentPdf), so the runtime cannot link standalone. WORD1
+# never noticed because it links both.
+target_link_libraries(opus_x64_runtime_test PRIVATE
+    opus_x64_runtime opus_original_engine user32 gdi32)
 set_target_properties(opus_x64_runtime_test PROPERTIES
     FOLDER "Original Opus x64/tests"
     RUNTIME_OUTPUT_DIRECTORY "${MSWORD_BUILD_ROOT}/tests"

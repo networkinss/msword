@@ -26,6 +26,11 @@ DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #endif
 
 /* E X T E R N A L S */
+/* Defined near the end of this file, but called well before. Without this
+   the call site gets an implicit int declaration, conflicting with the real
+   CP (long) return type. Unprototyped, matching the K&R definition. */
+CP CpFirstNonBlank();
+
 extern char             (**vhgrpchr)[];
 extern int              vbchrMax;
 extern int              vbchrMac;

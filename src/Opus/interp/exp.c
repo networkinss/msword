@@ -2,6 +2,7 @@
 */
 #ifdef OPUS_X64
 #include "opus_x64_compat.h"
+#include "opus_lvalue_cast.h"
 #else
 #include <qwindows.h>
 #endif
@@ -1495,13 +1496,13 @@ LTmError:
 						extern long LWholeFromNum();
 						NUM numT;
 						BLTBH(&hpev->num, &numT, cbNUM);
-						*((long *) pwArgs)++ = 
-								LWholeFromNum(&numT, TRUE);
+						OpusPutPp(long, pwArgs,
+								LWholeFromNum(&numT, TRUE));
 						}
 					break;
 
 				case dktDouble:
-					*((NUM *) pwArgs)++ = hpev->num;
+					OpusPutPp(NUM, pwArgs, hpev->num);
 					break;
 
 				case dktString:

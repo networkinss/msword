@@ -1,5 +1,6 @@
 /* I N S S U B S . C */
 #include "word.h"
+#include "opus_lvalue_cast.h"
 DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #include "file.h"
 #include "props.h"
@@ -1681,10 +1682,10 @@ struct CHP *pchp, *pchpBase;
 		{
 /* some bitfield is different from base */
 #ifdef MAC   /* this is bitfield order dependent! */
-		for (isprm = 0; w != 0; (uns)w <<= 1, isprm++)
+		for (isprm = 0; w != 0; OpusShlU(w, 1), isprm++)
 			if (w < 0 &&
 #else  /* WIN */			    
-					for (isprm = 0; w != 0; (uns)w >>= 1, isprm++)
+					for (isprm = 0; w != 0; OpusShrU(w, 1), isprm++)
 					if (w & 1 &&
 #endif /* MAC */
 					(cbPrl = CbGenPrl(pchp, pchpBase, rgsprmChp[isprm], rgb))

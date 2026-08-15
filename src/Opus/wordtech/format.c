@@ -1,6 +1,7 @@
 /* F O R M A T . C */
 
 #include "word.h"
+#include "opus_lvalue_cast.h"
 DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #include "heap.h"
 #include "disp.h"
@@ -3010,7 +3011,7 @@ else  if (chrm == chrmFormula)
 
 #endif
 if (chrm == chrmEnd) break;
-(char *)pchr += CbFromChrm(chrm);
+OpusAdvPp(char, pchr, CbFromChrm(chrm));
 				}
 			if ((CP) ich >= dcp)
 				{

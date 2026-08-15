@@ -3,6 +3,7 @@
 /* elsubs2.c -- Support for the EL interpreter */
 
 #include "word.h"
+#include "opus_lvalue_cast.h"
 DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #include "debug.h"
 #include "heap.h"
@@ -287,7 +288,7 @@ int cmm;
 		pele->celpMac = psy->cagdMax;
 		pelpSrc = (ARD *) (&psy->stName[psy->stName[0] + 1]);
 		if (psy->stName[0] == 0)
-			(WORD *) pelpSrc += 1;
+			OpusAdvPp(WORD, pelpSrc, 1);
 		bltb(pelpSrc, pele->rgelp, psy->cagdMax);
 		}
 #ifdef DEBUG
@@ -566,7 +567,8 @@ int docDot;
 WORD imcr;
 {
 	extern int GetInfoElx();
-	extern ELI ** HeliNew();
+	/* el.h already declares HeliNew with a full prototype; an unprototyped
+	   redeclaration conflicts with it under C99+. */
 	extern int vcElParams;
 	extern BOOL vfMcrRunning;
 

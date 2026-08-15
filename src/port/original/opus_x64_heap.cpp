@@ -154,7 +154,12 @@ void set_guard(void* const allocation,
     RaiseException(kOpusHeapGuardFailure, EXCEPTION_NONCONTINUABLE, 0,
                    nullptr);
     TerminateProcess(GetCurrentProcess(), kOpusHeapGuardFailure);
+    // Unreachable: both calls above are terminal. __assume is MSVC-only.
+#if defined(_MSC_VER)
     __assume(false);
+#else
+    __builtin_unreachable();
+#endif
 }
 
 void unregister_prc_handle(void** handle) noexcept {

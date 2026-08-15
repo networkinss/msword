@@ -42,6 +42,7 @@
 #define NOKANJI
 
 #include "word.h"
+#include "opus_lvalue_cast.h"
 DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #include "heap.h"
 #include "keys.h"
@@ -2386,21 +2387,21 @@ CMB * pcmb;
 		if (pcmb->tmc == tmcTabsReset)
 			{
 			*pb++ = 1;
-			*((int *) pb)++ = 0;
-			*((int *) pb)++ = czaMax;
+			OpusPutPp(int, pb, 0);
+			OpusPutPp(int, pb, czaMax);
 			}
 		else  if (*pb++ = (pcmb->tmc == tmcTabsClear))
 			{
-			*((int *) pb)++ = dxaTabPos;
-			*((int *) pb)++ = dxaCloseMin;
+			OpusPutPp(int, pb, dxaTabPos);
+			OpusPutPp(int, pb, dxaCloseMin);
 			}
 
 		if (*pb++ = (pcmb->tmc == tmcTabsSet))
 			{
-			*((int *) pb)++ = dxaTabPos;
+			OpusPutPp(int, pb, dxaTabPos);
 			tbd.jc = JcFromI(pcab->iAlignment);
 			tbd.tlc = TlcFromI(pcab->iLeader);
-			*((struct TBD *) pb)++ = tbd;
+			OpusPutPp(struct TBD, pb, tbd);
 			}
 
 		cbGrpprl = pb - grpprl;

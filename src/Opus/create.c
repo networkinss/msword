@@ -1817,6 +1817,12 @@ int doc;
 	char *pchSep, *pgrpprl;
 	struct CA ca;
 	struct PCD pcd;
+/* doc.h declares PCD.prm as a raw int (commented there as being a struct PRM),
+	but PprlPrmFS takes the struct by value. The bit pattern is identical --
+	struct PRM is a union over exactly that int -- yet C requires the conversion
+	to be spelled out. MSVC accepts the raw int because the K&R definition
+	supplies no prototype; clang checks the call against the definition above. */
+	struct PRM prmT;
 	struct PLC **hplcpcd;
 	struct PLC **hplcsed;
 	struct SEP sepStandard;
@@ -1827,7 +1833,8 @@ int doc;
 	pdod = PdodDoc(doc);
 	ipcdMac = IMacPlc(hplcpcd = pdod->hplcpcd);
 	GetPlc(hplcpcd, ipcdMac - 1, &pcd);
-	pgrpprl = PprlPrmFS(pcd.prm, &cb, grpprl);
+	prmT.prm = pcd.prm;
+	pgrpprl = PprlPrmFS(prmT, &cb, grpprl);
 	pchSep = grpprlSep;
 	while (cb > 0)
 		{

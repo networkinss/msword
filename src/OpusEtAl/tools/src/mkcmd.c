@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include "vk.h"
+#include "opus_lvalue_cast.h"
 
 #ifdef OPUS_X64_TOOL
 #include <stdint.h>
@@ -1164,7 +1165,7 @@ WriteAsmFile()
 			}
 		else
 			{
-			fprintf(pflAsm, "\n\tdw\t%d", *((OPUS_SWORD *) pch)++);
+			fprintf(pflAsm, "\n\tdw\t%d", OpusGetPp(OPUS_SWORD, pch));
 			}
 		fprintf(pflAsm, "\n");
 
@@ -1173,9 +1174,9 @@ WriteAsmFile()
 			{
 			bsy += 4;
 			fprintf(pflAsm, "\tdw\t%d\t; cabi\n", 
-					*((OPUS_SWORD *) pch)++);
+					OpusGetPp(OPUS_SWORD, pch));
 			fprintf(pflAsm, "\tdw\t%d\t; ieldi\n",
-					*((OPUS_SWORD *) pch)++);
+					OpusGetPp(OPUS_SWORD, pch));
 			}
 		else  if (mct != mctCmd) /* mct == mctEl */
 			{
@@ -1733,7 +1734,7 @@ int w1, w2, mct;
 
 	if (fChain)
 		{
-		*((OPUS_SWORD *) pch)++ = bsyChain; /* back pointer */
+		OpusPutPp(OPUS_SWORD, pch, bsyChain); /* back pointer */
 		}
 	else
 		{
@@ -1763,7 +1764,7 @@ int w1, w2, mct;
 
 	case mctSdm:
 		psy->u.ssdm.iidstr = 0;
-		*((OPUS_SWORD *) pch)++ = w1; /* cabi */
+		OpusPutPp(OPUS_SWORD, pch, w1); /* cabi */
 		*((OPUS_SWORD *) pch) = w2; /* ieldi */
 		break;
 

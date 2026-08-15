@@ -13,6 +13,7 @@
 #define NOCOMM
 #define NOWNDCLASS
 #include "word.h"
+#include "opus_lvalue_cast.h"
 DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #include "doc.h"
 #include "props.h"
@@ -800,7 +801,7 @@ CP cp;
 		Assert (ich < vfli.ichMac);
 		Assert (pchr->chrm);
 		Assert (pchr->chrm != chrmEnd);
-		(char *)pchr += pchr->chrm;
+		OpusAdvPp(char, pchr, pchr->chrm);
 		}
 	return ich;
 }

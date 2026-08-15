@@ -1355,8 +1355,8 @@ char *pchBufLim;
 		Assert((char *) pelcr + cbElcr <= pchBufLim);
 
 ReturnPelcr:
-		*pibBufCur = (char *) pelcr + cbElcr - Global(rgchBuf);
-		Global(ibElcrCur) = (char *) pelcr - Global(rgchBuf);
+		*pibBufCur = (char *) pelcr + cbElcr - (char *) Global(rgchBuf);
+		Global(ibElcrCur) = (char *) pelcr - (char *) Global(rgchBuf);
 		} 
 	while (elcc != elccEof && 
 			(fLoop || (fComment && !FLineElt(EltFromElcc(elcc)))));
@@ -1392,7 +1392,7 @@ char *PchRefillBuf(pchBufStart)
 */
 char *pchBufStart;
 {
-	int cchWanted = &Global(rgchBuf)[cchTokenBuf] - pchBufStart;
+	int cchWanted = (char *) &Global(rgchBuf)[cchTokenBuf] - pchBufStart;
 	int cchGot;
 
 #ifdef DEBUG
@@ -1419,10 +1419,10 @@ LEof:
 		}
 
 	Global(libBufStart) = Global(libBufEnd) -
-			(pchBufStart - Global(rgchBuf));
+			(pchBufStart - (char *) Global(rgchBuf));
 	Global(libBufEnd) += cchGot;
 
-	Global(ibBufLim) = pchBufStart - Global(rgchBuf) + cchGot;
+	Global(ibBufLim) = pchBufStart - (char *) Global(rgchBuf) + cchGot;
 
 #ifdef DEBUG
 	if (fToRead)
@@ -1466,7 +1466,7 @@ ELT EltGetCur()
 	pelcr = PelcrGet(Global(rgchBuf), &Global(ibBufCur),
 			Global(rgchBuf) + Global(ibBufLim));
 
-	Global(ibElcrCur) = (char *)pelcr - Global(rgchBuf);
+	Global(ibElcrCur) = (char *)pelcr - (char *) Global(rgchBuf);
 
 	switch (elcc = pelcr->elcc)
 		{

@@ -81,7 +81,7 @@ unsigned char *st;
 ElkFromIstElk(istElk)
 int istElk;
 {
-	int far * pist;
+	csconst unsigned far * pist;	/* mpelkistName is csconst unsigned */
 
 	for (pist = mpelkistName; *pist != istElk; pist += 1)
 		/*Assert(pist < (char *) mpelkistName + sizeof (mpelkistName))*/;

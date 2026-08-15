@@ -48,6 +48,7 @@
 #define NOKANJI
 
 #include "word.h"
+#include "opus_lvalue_cast.h"
 DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #include "heap.h"
 #include "props.h"
@@ -210,7 +211,7 @@ CMB * pcmb;
 	TDSD tdsd;
 	int  tmc;
 
-	vptdsd = &tdsd;
+	OpusSetPp(TDSD, pcmb->pv, &tdsd);
 	tmc = TmcTabs(pcmb);
 
 	return tmc == tmcOK ? cmdOK : tmc == tmcCancel ? cmdCancelled : cmdError;

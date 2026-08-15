@@ -63,7 +63,127 @@ Changes are confined to `src/CMakeLists.txt`, `src/CMakePresets.json`,
 
 None of this has been configured or built yet, on either machine.
 
-## Blockers found, not yet fixed
+## Blockers - status
+
+**Fixed on 2026-08-15** (items 1, 2 and 5 below; verified with the mingw-w64 GCC
+cross-compiler on the Linux box, MSVC spelling preserved bit-for-bit):
+
+- `src/port/original/opus_lvalue_cast.h` (new) - `OpusPutPp` / `OpusGetPp` /
+  `OpusAdvPp` / `OpusShrU` / `OpusShlU`. Under MSVC each expands to the original
+  cast-as-lvalue spelling, so that build is unchanged; under GCC/clang it does
+  byte-exact pointer arithmetic through `char *`.
+- The `++` form was 16 sites (item 2). A second sweep found **13 more** using
+  compound assignment (`(char *) pchr += cb`, `(uns) w >>= 1`) that the original
+  survey missed, in `print2.c`, `elsubs2.c`, `disp1.c`, `inssubs.c`, `format.c`,
+  `debugstr.c`, `select.c`, `debuginf.c`. **Zero cast-as-lvalue remain in-tree.**
+  Note `pwArgs` in `interp/exp.c` is an `int *`, so `*((long *) pwArgs)++`
+  advances `sizeof(long)` BYTES, not elements - a naive rewrite corrupts it.
+- `disp.h` flexible array member in a union - fixed as proposed (item 1).
+- `strnlen_s` shim added to `opus_modern_formats.cpp` (item 5).
+- `mkcmd.c` now compiles clean under GCC (0 errors), so the generated-header
+  chain is no longer gated by item 2.
+- `CMakeLists.txt`: the Windows SDK lookup no longer depends on
+  `CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION`, which is empty under Ninja. This
+  would have broken **clang-cl** (which sets `MSVC` but is driven by Ninja);
+  it now auto-detects the newest SDK on disk.
+- `CMakePresets.json`: added `x64-clang-mingw-debug` / `-release` (clang with
+  the GNU driver, Ninja Multi-Config, `out-clang-mingw/`) - needs no Windows SDK
+  and no Visual Studio at all.
+
+Linux syntax-only sweep of all 197 `Opus/**/*.c` after the fixes: **76 clean**,
+95 blocked solely by generated headers that only exist once the codegen chain
+runs (harness limitation, not a source defect), 26 failing for other reasons -
+largely include-order/`far`-keyword artifacts of the ad-hoc harness rather than
+confirmed defects. A real verdict needs a configure+build on Windows.
+
+## Missing build scripts - ROOT CAUSE FOUND 2026-08-15
+
+`src/CMakeLists.txt` referenced two helper scripts that **were never committed
+to this repo or to upstream `jmarshall23/msword`** (upstream HEAD `66c3500`
+confirmed identical, no `src/cmake/` there either). No build could ever reach
+code generation on any compiler, MSVC included -- ninja stops with
+"missing and no known rule to make it". This was not a clang problem.
+
+Both have been reconstructed in `src/cmake/`:
+
+- `GenerateElxStid.ps1` - emits the inert `elxinfo.h` stub. Safe: the
+  checked-in `src/port/original/elxinfo.h` documents that MERGEELX only emits a
+  table body when `elxdefs.h` defines `elkAppMac`, and `eldlg.c` includes it
+  without that, so it contributes no declarations.
+- `GenerateMenuHelpHeader.cmake` - converts MKCMD's `MENUHELP.TXT`
+  (`x,<TAB>"text"` records) into length-prefixed compressed literals, per
+  MKCMD's own `#ifdef OLDSTR` branch. **Verified: 208 prompts emitted.** The
+  table is guarded behind `OPUS_MENUHELP_COMPRESSED_TABLE` and inert by
+  default, because under `OPUS_X64` `menuhelp.c` defines `csrgstMenuBarHelp`
+  itself and nothing in the tree reads a symbol from the header
+  (`PchGetStr` is declared there but defined nowhere).
+
+Note: after adding the scripts, the build dir must be **re-configured** -- ninja
+caches the missing-dependency edge and keeps failing otherwise.
+
+## Further clang blockers fixed 2026-08-15
+
+- `mkdlg.c` declared `main(argc, argv)` with `SZ argv[]` (= `unsigned char **`).
+  C requires `char **`; clang enforces it, MSVC does not. Changed to
+  `char *argv[]` with `(SZ)` casts at the three use sites. Every other built
+  tool already used `char *argv[]`.
+- `opus_x64_compat.h` defined `native` as an empty CS-keyword macro, which
+  collides with `std::endian::native` in libstdc++'s `<bit>` (reached via
+  `<algorithm>`). The keyword is used **nowhere** in `Opus/` or `OpusEtAl/`, so
+  it is now `#ifndef __cplusplus`-guarded like `export` beside it.
+- `opus_x64_heap.cpp` used the MSVC-only `__assume(false)`; now
+  `__builtin_unreachable()` off-MSVC. (Contradicts the old "no MSVC intrinsics"
+  note in this file -- there was exactly one.)
+
+**clang is stricter than GCC on this tree, not looser.** clang 15 promotes
+`return-type`, `int-conversion`, `implicit-int` and
+`implicit-function-declaration` from warning to error for legacy K&R C; GCC
+still warns. Demoted (not silenced) via `-Wno-error=` in
+`OPUS_GNU_ORIGINAL_C_OPTIONS`, guarded to `CMAKE_C_COMPILER_ID MATCHES Clang`.
+Linux sweep: 29/197 clean before the demotions, 54/197 after; GCC got 76/197.
+
+## Build-configuration defects found 2026-08-15
+
+- `strnlen_s` is **NOT** absent from mingw-w64 (item 5 below was never
+  verified). It ships in `<sec_api/string_s.h>` whenever `MINGW_HAS_SECURE_API`
+  is set, and an unguarded shim collides with it. The fallback in
+  `opus_modern_formats.cpp` is now guarded on that macro.
+- The clang `-Wno-error=` demotions had to move from
+  `OPUS_GNU_ORIGINAL_C_OPTIONS` to a project-wide `add_compile_options`, because
+  the offending declarations live in `Opus/wordtech/word.h` and several targets
+  carry no GNU `else()` branch. Scoped to `$<COMPILE_LANGUAGE:C>` -- in C++ a
+  missing return is UB, not a K&R idiom, so it stays fatal there.
+- **Latent pre-existing defect, MSVC included:** `opus_original_command_test`
+  compiles `opus_original_command_test.c` with `/W4` and **no `/J`**, so that C
+  unit is built with *signed* char while the engine it exercises uses unsigned.
+  `opus_dibapp_tool` likewise has no GNU branch. `-funsigned-char` is now
+  applied project-wide for C on non-MSVC; **the missing `/J` on the MSVC side is
+  left alone deliberately** -- fixing it changes the MSVC build and wants its
+  own decision.
+
+## -fms-extensions IS required (nuance vs. the note below)
+
+`Opus/wordtech/props.h` declares `struct PAP` with a **tagged** nested struct
+carrying no member name (`struct PAP { struct PAPS { ... }; char fInTable; ... }`)
+and relies on PAPS's fields being promoted into PAP. ISO C permits anonymous
+members only when they are *untagged*; MSVC accepts the tagged form as an
+extension. Without `-fms-extensions` every `pap.dxaLeft` / `pap.stc` access
+fails ("no member named 'dxaLeft' in 'struct PAP'").
+
+`-fms-extensions` is now applied project-wide for non-MSVC, C and C++ alike
+(the translated-assembly units include the same headers).
+
+This does **not** contradict the earlier finding that `-fms-extensions` fails to
+fix the flexible-array-member-in-a-union case -- these are two different
+extensions and the flag only covers the anonymous-struct one.
+
+## Missing includes that MSVC masks
+
+- `opus_x64_runtime_test.cpp` uses `std::uint16_t` / `std::uint32_t` /
+  `std::uintptr_t` without including `<cstdint>`. MSVC's STL provides it
+  transitively; libstdc++ does not.
+
+## Original blocker notes (for reference)
 
 ### 1. Flexible array member in a union - one line
 

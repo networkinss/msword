@@ -207,19 +207,23 @@ int tkPush = tkNil;
 char szToken [256] = "";
 
 
+/* argv was originally declared `SZ argv []`, i.e. unsigned char **. C requires
+   main's second parameter to be char **, which clang enforces and MSVC does
+   not. The casts below restore the SZ view at each use, so behaviour is
+   unchanged for both compilers. */
 main(argc, argv)
 int argc;
-SZ argv [];
+char * argv [];
 {
 	if (argc != 3)
 		UsageExit();
 
 	if (argv[1][0] == '@')
-		ParseFileList(argv[1] + 1);
+		ParseFileList((SZ) argv[1] + 1);
 	else
-		ParseFile(argv[1]);
+		ParseFile((SZ) argv[1]);
 
-	WriteOutput(argv[2]);
+	WriteOutput((SZ) argv[2]);
 }
 
 

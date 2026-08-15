@@ -35,6 +35,12 @@ extern csconst struct EFLT dnflt[];
 /* #define DFORMULA */
 #endif /* PCJ */
 
+/* Defined below at CpNextVisiInOutline, but called earlier. Without this the
+   call site gets an implicit int declaration, which conflicts with the real
+   CP (long) return type. Unprototyped, matching the K&R definition and the
+   CP declarations just below. */
+CP CpNextVisiInOutline();
+
 #ifdef DEBUG
 CP C_DcpSkipFieldChPflcd();
 CP C_CpVisibleCpField();

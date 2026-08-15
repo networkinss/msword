@@ -245,7 +245,14 @@ struct PLDR
 	int     dyl;
 	union   {
 		HQ	hqpldre;    /* when fExternal true */
+#ifdef __GNUC__
+		/* GCC rejects a flexible array member [] inside a union and
+		   -fms-extensions does not relax it. [0] is size-preserving,
+		   so sizeof(struct PLDR) and cwPLDR are unchanged. */
+		struct DR rgdr[0];  /* when fExternal false */
+#else
 		struct DR rgdr[];   /* when fExternal false */
+#endif
 		};
 	};
 #define cwPLDR   (sizeof(struct PLDR) / sizeof(int))

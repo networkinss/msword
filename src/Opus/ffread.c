@@ -65,6 +65,7 @@
 #define NOKANJI
 
 #include "word.h"
+#include "opus_lvalue_cast.h"
 DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #include "heap.h"
 #include "debug.h"
@@ -1109,7 +1110,7 @@ LGotRecord:
 			break;
 		case ptgRefN:
 			/* cell reference */
-			rw = *((int *)pce)++;
+			rw = OpusGetPp(int, pce);
 			if (rw & grbitFRel)
 			/* ignore relative references */
 				break;
@@ -1120,12 +1121,12 @@ LGotRecord:
 					peref->col1 = *pce++;
 			goto LGetName;
 		case ptgAreaN:
-			rw = *((int *)pce)++;
+			rw = OpusGetPp(int, pce);
 			if (rw & grbitFRel)
 				/* ignore relative references */
 				break;
 			peref->row0 = rw & grbitRw;
-			rw = *((int *)pce)++;
+			rw = OpusGetPp(int, pce);
 			if (rw & grbitFRel)
 				/* ignore relative references */
 				break;

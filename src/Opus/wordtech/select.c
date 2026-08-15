@@ -3,6 +3,7 @@
 #ifdef MAC
 #define EVENTS
 #include "toolbox.h"
+#include "opus_lvalue_cast.h"
 #endif
 
 #define RSHDEFS
@@ -939,7 +940,7 @@ over xp, depending whichever is closer to the middle point of the char */
 				goto LHaveCp;
 				}
 			cp += ((struct CHRFG *)pchr)->dcp;
-			(char *)pchr += ((struct CHRFG *)pchr)->dbchr;
+			OpusAdvPp(char, pchr, ((struct CHRFG *)pchr)->dbchr);
 			ich = pchr->ich;
 			pdxp = &vfli.rgdxp[ich];
 			continue;
@@ -957,7 +958,7 @@ over xp, depending whichever is closer to the middle point of the char */
 			break;
 			}
 /* note how chrm is cb of the variant chr structure! */
-		(char *)pchr += CbFromChrm(chrm);
+		OpusAdvPp(char, pchr, CbFromChrm(chrm));
 		}
 
 LHaveCp:

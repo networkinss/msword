@@ -1429,7 +1429,8 @@ LUnlockDone:
 		extern WORD CchReadDDESource();
 		extern int ElaDebug();
 		extern int GetInfoElx();
-		extern ELI ** HeliNew();
+		/* el.h already declares HeliNew with a full prototype; an unprototyped
+		   redeclaration conflicts with it under C99+. */
 		extern BOOL vfElDisableInput;
 		extern BOOL vfElFunc;
 		extern BOOL vcElParams;

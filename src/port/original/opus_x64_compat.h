@@ -132,8 +132,14 @@ typedef struct tagBITMAP
 #ifndef huge
 #define huge
 #endif
+/* C only: `native` collides with std::endian::native, which libstdc++ declares
+   in <bit> and pulls in via <algorithm>. The original sources never use the
+   keyword (it appears nowhere in Opus/ or OpusEtAl/), so restricting it to C
+   costs nothing and keeps the C++ port files compilable. */
+#ifndef __cplusplus
 #ifndef native
 #define native
+#endif
 #endif
 #ifndef __cplusplus
 #ifndef export
