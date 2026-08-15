@@ -32,9 +32,13 @@ jobs:
 
       # Tee the build so a failure can be summarized: GitHub truncates very
       # large step logs, which previously hid the actual errors.
+      # -- verbosity:quiet keeps MSBuild's per-project/per-file chatter out of
+      # the step log (pages of it); the full output still lands in the log file
+      # and is uploaded as an artifact on failure.
       - name: Build
         run: |
-          cmake --build --preset ${{ matrix.preset }} 2>&1 | Tee-Object -FilePath ../build-msvc.log
+          cmake --build --preset ${{ matrix.preset }} -- -verbosity:quiet -consoleLoggerParameters:NoSummary 2>&1 |
+            Tee-Object -FilePath ../build-msvc.log
           exit $LASTEXITCODE
 
       - name: Error summary
