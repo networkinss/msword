@@ -4,6 +4,12 @@
 /build/
 /bin/
 
+# Packaging inputs/outputs: the Windows-built .exe staged for Linux packaging,
+# the bundled Wine tree, and the built packages. Binary artifacts, never committed.
+/packaging/payload/
+/packaging/wine/
+/packaging/dist/
+
 # Local scratch
 /error.txt
 /msvc.txt
