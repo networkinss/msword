@@ -1,0 +1,91 @@
+#!/bin/sh
+#
+# VintageWord launcher -- installed as /usr/bin/vintageword.
+#
+# Runs vintageword.exe under the Wine bundled with this package. Nothing here
+# touches, or falls back to, a system-installed Wine: the loader, the DLL tree
+# and the prefix are all package-private, so the app behaves identically
+# whether or not the user has Wine of their own.
+#
+# See TODO.md §3 (prefix) and §4 (launcher).
+
+set -eu
+
+# Overridable so the launcher can be exercised from the source tree before the
+# package exists -- see TODO.md §4.
+ROOT="${VINTAGEWORD_ROOT:-/opt/vintageword}"
+
+WINE="${ROOT}/wine/bin/wine"
+EXE="${ROOT}/vintageword.exe"
+TEMPLATE="${ROOT}/prefix-template"
+
+DATA_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}"
+PREFIX="${DATA_HOME}/vintageword/prefix"
+STAMP="${PREFIX}/.vintageword-prefix-version"
+
+die() { printf 'vintageword: %s\n' "$*" >&2; exit 1; }
+
+[ -x "$WINE" ]     || die "bundled Wine loader missing at ${WINE}"
+[ -f "$EXE" ]      || die "vintageword.exe missing at ${EXE}"
+[ -d "$TEMPLATE" ] || die "prefix template missing at ${TEMPLATE}"
+
+# The shipped prefix lives read-only under ${ROOT}. Word writes settings via
+# GetPrivateProfileString (WINWORD.INI and friends), and Wine writes registry
+# and user files, so each user needs a writable copy of their own.
+#
+# The copy is cheap because the template's system32 DLLs are symlinks into the
+# shared ${ROOT}/wine tree rather than 260 MB of duplicated files -- cp -a
+# preserves them as symlinks.
+TEMPLATE_VERSION="$(cat "${TEMPLATE}/.vintageword-prefix-version" 2>/dev/null || echo unknown)"
+
+if [ ! -d "$PREFIX" ] || [ "$(cat "$STAMP" 2>/dev/null || echo none)" != "$TEMPLATE_VERSION" ]; then
+    printf 'vintageword: preparing your Wine prefix (first run after install)...\n' >&2
+    rm -rf "$PREFIX"
+    mkdir -p "$(dirname "$PREFIX")"
+    cp -a "$TEMPLATE" "$PREFIX"
+
+    # The shipped prefix carries a neutral profile name, because whoever built
+    # it left their account name in the profile directory and in ~84 registry
+    # entries. Substitute the real user, so file dialogs and %APPDATA% point
+    # somewhere that belongs to them.
+    tmpl_user="$(cat "${TEMPLATE}/.vintageword-template-user" 2>/dev/null || echo vintageword)"
+    me="$(id -un)"
+    if [ "$tmpl_user" != "$me" ] && [ -d "${PREFIX}/drive_c/users/${tmpl_user}" ]; then
+        mv "${PREFIX}/drive_c/users/${tmpl_user}" "${PREFIX}/drive_c/users/${me}"
+        for reg in "${PREFIX}"/*.reg; do
+            [ -f "$reg" ] || continue
+            sed -i "s|C:\\\\\\\\users\\\\\\\\${tmpl_user}|C:\\\\\\\\users\\\\\\\\${me}|g" "$reg"
+        done
+    fi
+
+    printf '%s\n' "$TEMPLATE_VERSION" > "$STAMP"
+fi
+
+# H: maps the user's home directory. Wine always exposes the whole filesystem
+# as Z:, but a Save As dialog opening on Z:\home\<user> is a poor first
+# impression; H: gives file dialogs somewhere sensible to land.
+[ -e "${PREFIX}/dosdevices/h:" ] || ln -sfn "$HOME" "${PREFIX}/dosdevices/h:"
+
+export WINEPREFIX="$PREFIX"
+export WINEARCH=win64
+export WINELOADER="$WINE"
+# Neither .NET nor the embedded HTML engine is installed in this prefix (see
+# TODO.md §3); disabling them stops Wine offering to download either.
+export WINEDLLOVERRIDES="mscoree,mshtml="
+# Wine's own diagnostics are noise for an end user; WINEDEBUG can override.
+export WINEDEBUG="${WINEDEBUG:--all}"
+
+# Translate Linux paths on the command line into Windows paths, so
+# `vintageword ~/letter.doc` works. Anything that is not an existing file is
+# passed through untouched -- that covers the app's own flags.
+set -- "$@"
+args=""
+for a in "$@"; do
+    if [ -e "$a" ]; then
+        a="$("${ROOT}/wine/bin/winepath" -w "$a" 2>/dev/null || printf '%s' "$a")"
+    fi
+    args="${args} $(printf '%s' "$a" | sed "s/'/'\\\\''/g; s/^/'/; s/\$/'/")"
+done
+
+cd "$HOME" || true
+eval "exec \"\$WINE\" \"\$EXE\"${args}"

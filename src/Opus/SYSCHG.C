@@ -1200,6 +1200,13 @@ int ipst;
 #define maskICurPostfix	  1
 #define maskICurSepBlank  2
 
+#ifdef OPUS_X64
+STATIC NEAR GetAMPMFromProfile();	/* defined below; forward-declared for
+					   compilers that reject an implicit
+					   declaration followed by a static one */
+STATIC NEAR FInvalidCharSetting();	/* likewise */
+#endif
+
 /* %%Function:ReadUserProfile %%Owner:davidbo */
 ReadUserProfile(fForceDefault)
 BOOL fForceDefault;

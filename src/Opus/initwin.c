@@ -454,6 +454,13 @@ LONG FAR PASCAL       FWHKey();
 *  1 and 2 have been split up to reduce the amount of code space needed
 *  during initialization. */
 
+#ifdef OPUS_X64
+STATIC BOOL NEAR FRegisterWnd();	/* defined below; forward-declared for
+					   compilers that reject an implicit
+					   declaration followed by a static one */
+STATIC int NEAR FRegisterWinInfo();	/* likewise */
+#endif
+
 /* %%Function:FInitPart1 %%Owner:PETERJ */
 int FInitPart1( hInstance, hPrevInstance, lpszCmdLine, 
 rgchCmdLine, rgpchArg, pipchArgMac, pfOpenUntitled, pfTutorial  )

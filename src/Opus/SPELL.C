@@ -201,6 +201,16 @@ EXPORT WORD WDDLBoxSpellMDict();
 *
 ** ***/
 
+#ifdef OPUS_X64
+/* defined below; forward-declared for compilers that reject an implicit
+   declaration followed by a static one */
+static BOOL FUpdateDictOK();
+static BOOL FUserDictOK();
+static FTryDict();
+static FCreateDict();
+static SpellDllFree();
+#endif
+
 /* %%Function:CmdSpelling %%Owner:bryanl */
 CMD CmdSpelling(pcmb)
 CMB * pcmb;

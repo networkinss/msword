@@ -12,6 +12,11 @@ DEBUGASSERTSZ            /* WIN - bogus macro for assert string */
 #include "sel.h"
 #include "ch.h"
 #include "debug.h"
+#ifdef OPUS_X64
+/* fontwin.h's default character height; the header itself cannot be
+   included here (it redefines FTI/FFN/FCID/FCE against format.h). */
+#define hpsDefault (20)
+#endif
 
 #ifdef PCJ
 /* #define DFONT */
@@ -817,6 +822,16 @@ int fPrinterFont;
 	   operation, so request grayscale antialiasing for screen fonts. */
 	if (!fPrinterFont)
 		plf->lfQuality = 4; /* ANTIALIASED_QUALITY */
+
+	/* An hps of 0 violates this function's contract (see the Assert below)
+	   but reaches here for default-size text.  A zero lfHeight asks the
+	   font mapper for the device default size; modern mappers (Wine's in
+	   particular) resolve that to a fixed 16-pixel font regardless of the
+	   DC's resolution, so on a 300dpi printer DC the metrics read back as a
+	   ~3.5pt "actual" size and the matching screen font becomes unreadably
+	   small.  Resolve the default size here instead. */
+	if (fcid.hps == 0)
+		fcid.hps = hpsDefault;
 #endif
 
 /* Scale the request into device units */

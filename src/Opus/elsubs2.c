@@ -588,7 +588,10 @@ WORD imcr;
 	/* Prevent recursion... */
 	if (FRunningElgElm(docDot, imcr))
 		{
+		{
+		void ModeError();	/* declared void at its other use above */
 		ModeError();
+		}
 		goto LReturn;
 		}
 

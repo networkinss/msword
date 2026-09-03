@@ -35,7 +35,13 @@ struct BMS {	/* structure giving a bitmap and its size */
 struct RSBI {
 	union {
 	struct	{
+#ifdef __GNUC__
+		/* gcc rejects a flexible array member as a struct's only member;
+		   the zero-length array is the equivalent GNU spelling. */
+		struct BMS rgbms [0];
+#else
 		struct BMS rgbms [];
+#endif
 		};
 	struct	{
 		struct BMS	bmsUArrow;
@@ -70,7 +76,11 @@ struct ZPP {	/* describes a drawing range of horz/vert RSB control */
 
 union GRPZPP {	/* describes all drawing ranges of horz/vert RSB control */
 		struct	{
+#ifdef __GNUC__
+		struct ZPP rgzpp[0];	/* see rgbms above */
+#else
 		struct ZPP rgzpp[];
+#endif
 		};
 	struct	{
 		struct ZPP zppUArrow;

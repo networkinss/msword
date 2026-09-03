@@ -172,6 +172,57 @@ run_supervised() {
     return $rc
 }
 
+# --- staging helpers -------------------------------------------------------
+
+# Strip debug information from everything in the staged tree.
+#
+# Two formats are present and both matter: ELF (.so under lib/wine/x86_64-unix,
+# plus the loader in bin/) and PE (the .dll/.exe under lib/wine/x86_64-windows,
+# built by mingw-w64 and carrying DWARF). The PE half is by far the bigger win
+# -- mshtml.dll alone drops 30 MB -> 4.6 MB.
+#
+# Selecting files by name or permission bit does not work: Wine's PE DLLs are
+# mode 644 and named *.dll, so a `-name '*.so' -o -perm -u+x` filter silently
+# skips the entire 775 MB PE tree. Ask file(1) what each file actually is.
+#
+# --strip-debug, not --strip-unneeded: it drops the debug sections without
+# touching symbol tables, which is the conservative choice for PE images whose
+# exports Wine's loader resolves at runtime.
+strip_staged_tree() {
+    local before after stripped=0
+    before="$(du -sm "$STAGE_DIR" | cut -f1)"
+
+    while IFS= read -r -d '' f; do
+        case "$(file -b "$f")" in
+            *ELF*|*PE32*)
+                strip --strip-debug "$f" 2>/dev/null && stripped=$((stripped + 1))
+                ;;
+        esac
+    done < <(find "$STAGE_DIR" -type f -print0)
+
+    after="$(du -sm "$STAGE_DIR" | cut -f1)"
+    printf 'Stripped %d binaries: %s MB -> %s MB\n' "$stripped" "$before" "$after"
+}
+
+# Remove build-time artifacts that `make install` places in the tree but that
+# nothing needs at runtime: the Windows SDK headers (74 MB) and the import
+# libraries the mingw-w64 link step consumes (499 files, 72 MB). Together
+# they are a third of the staged tree.
+#
+# This is the safe half of trimming. The risky half -- deleting PE DLLs that
+# Wine may load opportunistically -- belongs after the prefix and launcher
+# work, where each deletion round can be re-tested. See TODO.md §1.
+trim_build_artifacts() {
+    local before after
+    before="$(du -sm "$STAGE_DIR" | cut -f1)"
+
+    find "$STAGE_DIR" -name '*.a' -delete
+    rm -rf "${STAGE_DIR}/usr/local/include"
+
+    after="$(du -sm "$STAGE_DIR" | cut -f1)"
+    printf 'Trimmed build artifacts: %s MB -> %s MB\n' "$before" "$after"
+}
+
 # --- stages ----------------------------------------------------------------
 
 stage_fetch() {
@@ -239,9 +290,8 @@ stage_install() {
     rm -rf "$STAGE_DIR"
     make -C "$BUILD_DIR" install DESTDIR="$STAGE_DIR" >>"${LOG_DIR}/install.log" 2>&1
 
-    # Strip debug symbols; ignore the non-ELF files strip refuses.
-    find "$STAGE_DIR" -type f \( -name '*.so' -o -perm -u+x \) \
-        -exec strip --strip-unneeded {} + 2>/dev/null || true
+    strip_staged_tree
+    trim_build_artifacts
 
     printf 'Staged tree: %s\n' "$STAGE_DIR"
     du -sh "$STAGE_DIR"

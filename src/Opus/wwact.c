@@ -1182,6 +1182,11 @@ BOOL fActive;
 /* B l a n k  S c r o l l  B a r s  M w d */
 /* make scroll bars of MWD window blank or non-blank */
 
+#ifdef OPUS_X64
+static BSBPwwd();	/* defined below; forward-declared for compilers that
+			   reject an implicit declaration followed by a static one */
+#endif
+
 /* %%Function:BlankScrollBarsMwd %%Owner:chic */
 BlankScrollBarsMwd( hmwd, fBlank )
 struct MWD **hmwd;

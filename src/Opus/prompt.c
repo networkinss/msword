@@ -312,7 +312,21 @@ LRJustField:
 
 		case '\006':    /* *rgw is doc, get short form name */
 				{
+#ifdef OPUS_X64
+				/* The doc's real file may be a Win95-alias staging file
+				   (D0000001.DOC); show the user's chosen name instead,
+				   as wwchange.c does for window titles.  The alias map
+				   is keyed by full path, so look up before shortening. */
+				{
+				extern int OpusWin95DisplayAlias();
+				GetDocSt(DocMother(*rgw), szName, gdsoFullPath);
+				if (!OpusWin95DisplayAlias(szName))
+					GetDocSt(DocMother(*rgw), szName, gdsoShortName);
+				rgw++;
+				}
+#else
 				GetDocSt(DocMother(*rgw++), szName, gdsoShortName);
+#endif
 				StToSzInPlace(szName);
 InsertDocName:
 				cch = CchSz (szName) - 1;

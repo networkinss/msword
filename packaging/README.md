@@ -64,9 +64,10 @@ push, and its configure flags need an interactive tuning loop.
 
 ## Status
 
-- **Debian** — in progress. Minimal Wine 11.0 built from source successfully
-  (2026-08-16); next step is the `install` stage. See `debian/TODO.md`, which
-  opens with a "Where we are" section.
+- **Debian** — in progress. Minimal Wine 11.0 built from source, staged and
+  trimmed to 285 MB (2026-08-16); next steps are the private prefix and the
+  launcher wrapper. See `debian/TODO.md`, which opens with a "Where we are"
+  section.
 - **Windows** — planned, not started. See `windows/TODO.md`.
 
 The payload `bin/vintageword.exe` is staged (copied from m93p and renamed from

@@ -1,5 +1,5 @@
-#include <Windows.h>
-#include <DbgHelp.h>
+#include <windows.h>
+#include <dbghelp.h>
 #include <rtcapi.h>
 #include <algorithm>
 #include <cstdarg>

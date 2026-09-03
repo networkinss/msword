@@ -2515,6 +2515,30 @@ int OpusWin95DisplayAlias(unsigned char* const st_file) {
     if (path.empty()) {
         return false;
     }
+    /* A save that is still unwinding (e.g. the "N Chars." prompt inside
+       CmdSaveAs) has not yet moved the mapping into g_win95_saved_aliases;
+       it only exists as the active save alias. */
+    if (g_win95_save_alias.active) {
+        const std::string leaf =
+            win95_alias_key(path.substr(path.find_last_of("\\/") + 1));
+        const std::string legacy_leaf = win95_alias_key(
+            g_win95_save_alias.legacy_path.substr(
+                g_win95_save_alias.legacy_path.find_last_of("\\/") + 1));
+        if (_stricmp(path.c_str(),
+                     g_win95_save_alias.legacy_path.c_str()) == 0 ||
+            (!leaf.empty() && leaf == legacy_leaf)) {
+            const char* name = g_win95_save_alias.selected_path.c_str();
+            if (const char* separator = std::strrchr(name, '\\');
+                separator != nullptr) {
+                name = separator + 1;
+            }
+            const std::size_t length = (std::min)(
+                std::strlen(name), static_cast<std::size_t>(119));
+            st_file[0] = static_cast<unsigned char>(length);
+            std::memcpy(st_file + 1, name, length);
+            return true;
+        }
+    }
     auto saved = g_win95_saved_aliases.find(win95_alias_key(path));
     if (saved == g_win95_saved_aliases.end()) {
         char full_path[32768]{};
@@ -2525,6 +2549,26 @@ int OpusWin95DisplayAlias(unsigned char* const st_file) {
             return false;
         }
         saved = g_win95_saved_aliases.find(win95_alias_key(full_path));
+    }
+    if (saved == g_win95_saved_aliases.end()) {
+        /* The engine's normalizer can render the staging path in a form
+           that differs from the key the save registered (e.g. while the
+           save command is still unwinding).  Staging leaves (D%07lX.DOC)
+           are unique within a session, so fall back to matching the leaf. */
+        const std::string leaf =
+            win95_alias_key(path.substr(path.find_last_of("\\/") + 1));
+        if (!leaf.empty()) {
+            for (auto it = g_win95_saved_aliases.begin();
+                 it != g_win95_saved_aliases.end(); ++it) {
+                const std::string& key = it->first;
+                const std::size_t slash = key.find_last_of("\\/");
+                if (key.compare(slash == std::string::npos ? 0 : slash + 1,
+                                std::string::npos, leaf) == 0) {
+                    saved = it;
+                    break;
+                }
+            }
+        }
         if (saved == g_win95_saved_aliases.end()) {
             return false;
         }
